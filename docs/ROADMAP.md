@@ -235,16 +235,16 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 ### Phase 3b — C++ HPC simulation core · H+5 → H+14 (D)
 *Goal: Survival probability for one customer in under 50 ms, and the whole bank in under 1 second, both called from the app.*
 
-- [ ] `sim_numpy.py` first (H+5 → H+7): the simulation from the Data Model in vectorised NumPy. This is the reference and the fallback
-- [ ] `hpc/resil.cpp`: the same simulation in C++17. Use flat arrays, one random generator per thread (e.g. `std::mt19937_64` or a fast xoshiro), OpenMP `parallel for` over accounts or paths, and no Python objects inside the loop
-- [ ] pybind11 functions that take NumPy arrays without copying:
+- [x] `sim_numpy.py` first (H+5 → H+7): the simulation from the Data Model in vectorised NumPy. This is the reference and the fallback *(risk.py holds the risk factors and the shared input layout)*
+- [x] `hpc/resil.cpp`: the same simulation in C++17. Use flat arrays, one random generator per thread (e.g. `std::mt19937_64` or a fast xoshiro), OpenMP `parallel for` over accounts or paths, and no Python objects inside the loop *(xoshiro256+ per (account, path) so results don't depend on thread count; table-based normals, 5x faster than Box-Muller)*
+- [x] pybind11 functions that take NumPy arrays without copying:
   - `simulate_one(profile, shock, n_paths, months, seed)` → survival probability, percentiles of when the balance first goes negative, p10/p50/p90 fan
   - `simulate_bank(profiles_array, shock, n_paths, months, seed)` → per-account survival probability and runway
   - `sweep(profiles_array, shock_grid, ...)` → bank-wide results for every shock combination (for discovery)
-- [ ] **Check against the judges:** with all noise turned off (sd = 0, no random job loss, no repairs), the month the balance first goes negative must equal the judges' runway (within 0.1)
-- [ ] **Check against NumPy:** same seed and inputs give the same survival probabilities within ±1%
-- [ ] Load `resil_hpc` if it imports; otherwise use `sim_numpy` and show a small "NumPy mode" badge
-- [ ] `bench.py`: time Python loop vs NumPy vs C++ (1 thread) vs C++ (all threads) on the bank-wide run. Save the table and chart for the pitch
+- [x] **Check against the judges:** with all noise turned off (sd = 0, no random job loss, no repairs), the month the balance first goes negative must equal the judges' runway (within 0.1) *(within 0.05 on every account, both backends)*
+- [x] **Check against NumPy:** same seed and inputs give the same survival probabilities within ±1%
+- [x] Load `resil_hpc` if it imports; otherwise use `sim_numpy` and show a small "NumPy mode" badge *(simulate.py; RESIL_FORCE_NUMPY=1 rehearses the fallback)*
+- [x] `bench.py`: time Python loop vs NumPy vs C++ (1 thread) vs C++ (all threads) on the bank-wide run. Save the table and chart for the pitch *(docs/bench.md: 0.56 s on 8 threads, 357x pure Python)*
 - [ ] Optional if ahead of schedule: run the time machine replay (D6) through C++ by streaming the 1M transactions in date order and updating every account's runway each month
 
 **Done when:** `pytest` passes both checks, the bank-wide run takes under 1 second on the demo laptop, and the benchmark chart is saved.

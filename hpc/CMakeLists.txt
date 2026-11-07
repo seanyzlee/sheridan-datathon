@@ -12,9 +12,9 @@ pybind11_add_module(resil_hpc src/resil.cpp)
 target_link_libraries(resil_hpc PRIVATE OpenMP::OpenMP_CXX)
 
 if(MSVC)
-  target_compile_options(resil_hpc PRIVATE /O2 /W3 /EHsc)
+  target_compile_options(resil_hpc PRIVATE /O2 /Oi /fp:fast /arch:AVX2 /W3 /EHsc)
 else()
-  target_compile_options(resil_hpc PRIVATE -O3 -Wall)
+  target_compile_options(resil_hpc PRIVATE -O3 -march=native -ffast-math -Wall)
 endif()
 
 install(TARGETS resil_hpc LIBRARY DESTINATION .)
