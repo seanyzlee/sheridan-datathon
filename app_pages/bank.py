@@ -17,7 +17,8 @@ under3 = float((bank["runway"] < 3).mean())
 zero = float((bank["runway"] == 0).mean())
 
 with st.container(horizontal=True):
-    st.metric("Customers under 3 months", f"{under3:.1%}", delta=f"{under3 - base_under3:+.1%} vs no shock",
+    st.metric("Customers under 3 months", f"{under3:.1%}",
+              delta=f"{under3 - base_under3:+.1%} vs no shock" if round(under3 - base_under3, 3) else None,
               delta_color="inverse", border=True, help="Judges' runway under this shock")
     st.metric("Already out of money", f"{zero:.1%}", border=True, help="Buffer gone after the one-off cost")
     st.metric(f"Expected to run out within {target:g} months", f"{1 - bank['survival'].mean():.1%}", border=True,

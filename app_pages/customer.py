@@ -104,7 +104,9 @@ def customer_view(account_id: int, shock: engine.Shock) -> None:
 
     left, right = st.columns(2)
     with left:
-        st.plotly_chart(ui.burn_down_chart(plan.burn_down(p, shock, 24), sim["fan"]),
+        # Show enough months to see the balance cross zero, without squashing it under a 24-month line
+        horizon = 24 if shocked.no_shortfall else int(min(24, max(6, target + 2, 2 * shocked.months + 1)))
+        st.plotly_chart(ui.burn_down_chart(plan.burn_down(p, shock, horizon), sim["fan"][:, :horizon + 1]),
                         alt="Balance after the shock: judges' line and simulated range")
     with right:
         st.plotly_chart(ui.waterfall_chart(plan.waterfall(p, shock)), alt="Waterfall of runway changes")
@@ -167,9 +169,9 @@ st.divider()
 bank, secs = ui.bank_run(ui.shock_key(shock), target)
 under3 = float((bank["runway"] < 3).mean())
 with st.container(horizontal=True, vertical_alignment="center"):
+    change = under3 - float((bank["runway_base"] < 3).mean())
     st.metric("Whole bank: customers under 3 months", f"{under3:.0%}",
-              delta=f"{under3 - float((bank['runway_base'] < 3).mean()):+.0%} vs no shock", delta_color="inverse",
-              border=True)
+              delta=f"{change:+.0%} vs no shock" if round(change, 2) else None, delta_color="inverse", border=True)
     st.metric(f"Expected to run out within {target:g} months", f"{1 - bank['survival'].mean():.0%}", border=True,
               help="Average over all customers of the simulated chance of running out")
     st.caption(f"4,500 customers x {ui.simulate.BANK_PATHS:,} futures x {ui.simulate.BANK_MONTHS} months "

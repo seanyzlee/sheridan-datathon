@@ -3,6 +3,8 @@
 The build plan is in `docs/ROADMAP.md`. Read it at the start of every session and work on the first unchecked task.
 Current phase: **Phase 4 wrap-up, then Phases 5–6** (Phases 0–3c done; app runs with `.venv/Scripts/streamlit.exe run app.py`).
 
+Restart `streamlit run app.py` after editing an imported module (`ui.py`, `engine.py`, ...): the server keeps the old module; only page scripts reload.
+
 Rebuild the C++ core after editing `hpc/`: `uv pip install --python .venv/Scripts/python.exe ./hpc` (bump the version in `hpc/pyproject.toml` so uv reinstalls).
 
 Use the project venv: `.venv/Scripts/python.exe` (Python 3.12). The system Python 3.14 has numpy blocked by Windows Application Control. Run tests with `.venv/Scripts/python.exe -m pytest`.

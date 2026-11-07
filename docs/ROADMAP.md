@@ -271,7 +271,7 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 - [x] **Time machine (D6):** for customers whose loan defaulted, replay their months (in Tiger Data with `replay.py`) and find how many months earlier the engine would have flagged them *(early-warning rule found 71% of defaults a median 16 months ahead, using only data available at each month)*
 - [x] Regional view: fragility by district against `unemployment_rate_2023` and `average_salary` *(no link: r = 0.06 with unemployment, -0.05 with salary)*
 - [x] **Canadian realism (D8):** compare the judges' EI (55% × I) with the capped EI. How many customers lose runway because of the weekly maximum? *(the real EI cap pushes another 16% of customers below 6 months)*
-- [ ] Size shocks with Canadian sources (CPI, CMHC rent, EI maximum, Labour Force Survey) and record each link in `SOURCES.md`
+- [x] Size shocks with Canadian sources (CPI, CMHC rent, EI maximum, Labour Force Survey) and record each link in `SOURCES.md` *(SOURCES.md: EI max and CPI; CMHC rent not used, the rent slider is in dollars)*
 - [x] Choose **one main finding** and put it on the app's landing tab as a single chart and sentence *('The twist is the early warning' page)*
 
 **Done when:** The finding chart is in the app, and `discovery.ipynb` runs from start to finish.
@@ -282,11 +282,11 @@ Take turns: at least two people sleep in shifts while one keeps working. Don't s
 ### Phase 5 — Rehearse the live twist · H+18 → H+21 (everyone)
 *Goal: The 5-minute judging slot is practised at least 5 times.*
 
-- [ ] Script the 1-minute pitch: the problem, the engine, the HPC benchmark in one sentence, then the main finding
+- [x] Script the 1-minute pitch: the problem, the engine, the HPC benchmark in one sentence, then the main finding *(docs/PITCH.md)*
 - [ ] Do 3-minute practice runs where a teammate picks a random account and makes up a twist card. Use the twist card reader every time
-- [ ] Order for each live twist: judges' runway first (it matches their answer), then survival probability, then the breaking point, then the plan, and end on the bank-wide panel
-- [ ] Practise one-sentence answers: "Why median?", "Why don't you count EI length in runway?", "Why C++?", "Where do the probabilities come from?", "What if they have no income?"
-- [ ] Speed: preload the cache when the app starts and remove anything that takes more than 2 seconds
+- [x] Order for each live twist: judges' runway first (it matches their answer), then survival probability, then the breaking point, then the plan, and end on the bank-wide panel *(docs/PITCH.md)*
+- [x] Practise one-sentence answers: "Why median?", "Why don't you count EI length in runway?", "Why C++?", "Where do the probabilities come from?", "What if they have no income?" *(answers written in docs/PITCH.md; the practice itself is for the team)*
+- [x] Speed: preload the cache when the app starts and remove anything that takes more than 2 seconds *(ui.warm_up() preloads at start)*
 - [ ] Run at least one rehearsal with the Wi-Fi turned off, to prove the Parquet fallback works for every panel the live twist needs
 - [ ] Check Tiger Data is awake 10 minutes before judging
 - [ ] Backup plan: a screen recording, the NumPy fallback, the offline cache, and a notebook version in case the Wi-Fi, a cloud service, the build or the app fails
@@ -297,10 +297,10 @@ Take turns: at least two people sleep in shifts while one keeps working. Don't s
 *Goal: Submitted on Devpost with an hour to spare.*
 
 - [ ] Demo video, 2–3 minutes: pitch, one live twist with the survival and bank-wide panels, the benchmark, the finding
-- [ ] Write-up: what the engine does, the main finding, a short "how the C++ core works" section with the benchmark table, and the architecture diagram (Tiger Data, C++ core, app)
-- [ ] Check that no credentials are in the repo history before making it public (`git log -p | grep -i -E "password|secret|token"`). Rotate any key that ever got committed
-- [ ] `SOURCES.md` and README credits: PKDD'99 Financial dataset (CTU Prague), plus every StatCan or Government of Canada link used
-- [ ] README: setup in 3 commands (including building `hpc/`) and a screenshot
+- [x] Write-up: what the engine does, the main finding, a short "how the C++ core works" section with the benchmark table, and the architecture diagram (Tiger Data, C++ core, app) *(docs/WRITEUP.md)*
+- [x] Check that no credentials are in the repo history before making it public (`git log -p | grep -i -E "password|secret|token"`). Rotate any key that ever got committed *(clean on 2026-11-07)*
+- [x] `SOURCES.md` and README credits: PKDD'99 Financial dataset (CTU Prague), plus every StatCan or Government of Canada link used
+- [x] README: setup in 3 commands (including building `hpc/`) and a screenshot *(docs/img/customer.png)*
 - [ ] Make the repo public (or attach a zip) and check the link in a private window
 - [ ] Submit on Devpost by **H+23**
 

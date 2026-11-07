@@ -19,15 +19,20 @@ with st.container(horizontal=True):
     st.metric("Good loans flagged", f"{f['false_alarms']:.0%}", border=True, help="False alarms")
 
 ew = discovery.early_warning_summary()
+SHORT = {"stress_ei_lt2": "On EI<br>under 2 mo", "base_lt3": "No shock<br>under 3 mo", "base_lt6": "No shock<br>under 6 mo",
+         "stress_one_month_lt3": "After a one-off<br>under 3 mo"}
+ew["short"] = ew["rule"].map(SHORT)
 left, right = st.columns(2)
 with left:
     fig = go.Figure()
-    fig.add_bar(x=ew["label"], y=ew["caught"] * 100, name="Defaults caught", marker_color=ui.ORANGE,
+    fig.add_bar(x=ew["short"], y=ew["caught"] * 100, name="Defaults caught", marker_color=ui.ORANGE,
                 text=[f"{v:.0%}" for v in ew["caught"]], textposition="outside")
-    fig.add_bar(x=ew["label"], y=ew["false_alarms"] * 100, name="Good loans flagged", marker_color=ui.GREY,
+    fig.add_bar(x=ew["short"], y=ew["false_alarms"] * 100, name="Good loans flagged", marker_color=ui.GREY,
                 text=[f"{v:.0%}" for v in ew["false_alarms"]], textposition="outside")
-    st.plotly_chart(ui._layout(fig, height=380, title="Which warning rule works best", yaxis_title="%",
-                               barmode="group", hovermode="closest"), alt="Early-warning rules compared")
+    fig = ui._layout(fig, height=380, title="Which warning rule works best", yaxis_title="%",
+                     barmode="group", hovermode="closest")
+    fig.update_layout(legend=dict(yanchor="bottom", y=1.0, xanchor="right", x=1), xaxis_tickangle=0)
+    st.plotly_chart(fig, alt="Early-warning rules compared")
 with right:
     db = discovery.default_by_band()
     fig = go.Figure(go.Bar(x=db["band"].astype(str), y=db["default_rate"] * 100, marker_color=ui.RED,

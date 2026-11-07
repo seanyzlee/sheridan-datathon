@@ -61,3 +61,13 @@ def test_unknown_account(offline):
     at = _app().run()
     at.number_input(key="account_id").set_value(1).run()
     assert at.error and "not in the data" in at.error[0].value
+
+
+def test_demo_link_applies_account_and_twist(offline):
+    at = _app()
+    at.query_params["account"] = "20396"
+    at.query_params["twist"] = "EI 55% for 6 months"
+    at.run()
+    assert not at.exception
+    assert at.session_state["account_id"] == 20396 and at.session_state["income_pct"] == 55
+    assert {m.label: m.value for m in at.metric}["Runway after the shock"] == "2.3 months"

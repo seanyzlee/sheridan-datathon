@@ -37,6 +37,18 @@ def init_state() -> None:
     st.session_state.setdefault("account_id", 20111)
     st.session_state.setdefault("use_live", True)
     st.session_state.setdefault("parsed_card", None)
+    # Shareable demo links: ?account=20396&twist=EI 55% for 6 months (applied once, on the first run)
+    if not st.session_state.get("_query_applied"):
+        st.session_state._query_applied = True
+        qp = st.query_params
+        if qp.get("account", "").isdigit():
+            st.session_state.account_id = int(qp["account"])
+        if qp.get("twist"):
+            st.session_state.card_text = qp["twist"]
+            parsed = twist.parse(qp["twist"])
+            st.session_state.parsed_card = parsed
+            if parsed.understood:
+                set_shock(parsed.shock)
 
 
 def set_shock(s: Shock) -> None:
@@ -211,7 +223,9 @@ def months_label(r: engine.RunwayResult) -> str:
 
 def _layout(fig: go.Figure, height: int = 320, **kw) -> go.Figure:
     kw.setdefault("hovermode", "x unified")
-    fig.update_layout(height=height, margin=dict(l=8, r=8, t=36, b=8), legend=dict(orientation="h", y=-0.15), **kw)
+    # Legend under the plot, below the x-axis title, so the two never overlap
+    fig.update_layout(height=height, margin=dict(l=8, r=8, t=36, b=8),
+                      legend=dict(orientation="h", yanchor="top", y=-0.22 if kw.get("xaxis_title") else -0.1), **kw)
     return fig
 
 
@@ -241,7 +255,7 @@ def spending_chart(m: pd.DataFrame) -> go.Figure:
     fig = go.Figure(go.Bar(x=d.values, y=d.index, orientation="h",
                            marker_color=[GREY if k in fixed else ORANGE for k in d.index],
                            text=[money(v) for v in d.values], textposition="auto"))
-    return _layout(fig, height=300, title="Average monthly spending, last 12 months (orange = can be cut)",
+    return _layout(fig, height=300, title="Spending per month, last 12 months (orange = can be cut)",
                    xaxis_title="$ per month", hovermode="closest")
 
 
@@ -259,17 +273,17 @@ def burn_down_chart(bd: pd.DataFrame, fan: np.ndarray | None = None) -> go.Figur
     fig = go.Figure()
     if fan is not None:
         t = np.arange(fan.shape[1])
-        fig.add_scatter(x=t, y=fan[2], line=dict(width=0), showlegend=False, hoverinfo="skip")
-        fig.add_scatter(x=t, y=fan[0], fill="tonexty", fillcolor=FAN_FILL, line=dict(width=0),
+        fig.add_scatter(x=t, y=fan[2], mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip")
+        fig.add_scatter(x=t, y=fan[0], mode="lines", fill="tonexty", fillcolor=FAN_FILL, line=dict(width=0),
                         name="Simulated futures (10th to 90th percentile)")
-        fig.add_scatter(x=t, y=fan[1], line=dict(color=ORANGE, dash="dot"), name="Simulated median")
-    fig.add_scatter(x=bd["month"], y=bd["balance"], line=dict(color="#333", width=3), name="Judges' formula")
+        fig.add_scatter(x=t, y=fan[1], mode="lines", line=dict(color=ORANGE, dash="dot"), name="Simulated median")
+    fig.add_scatter(x=bd["month"], y=bd["balance"], mode="lines", line=dict(color="#333", width=3), name="Judges' formula")
     if "balance_ei_ends" in bd:
-        fig.add_scatter(x=bd["month"], y=bd["balance_ei_ends"], line=dict(color=RED, dash="dash"),
+        fig.add_scatter(x=bd["month"], y=bd["balance_ei_ends"], mode="lines", line=dict(color=RED, dash="dash"),
                         name="If EI ends and no new job")
     fig.add_hline(y=0, line=dict(color=RED, width=1))
-    return _layout(fig, height=340, title="Balance after the shock", xaxis_title="Months from now",
-                   yaxis_title="Balance ($)")
+    fig = _layout(fig, height=380, title="Balance after the shock, month by month", yaxis_title="Balance ($)")
+    return fig
 
 
 def runway_histogram(df: pd.DataFrame) -> go.Figure:
