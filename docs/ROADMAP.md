@@ -207,28 +207,28 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 ### Phase 2 — "Know the customer" app · H+3 → H+9 (B)
 *Goal: A judge types any account_id and sees the customer's position in one screen.*
 
-- [ ] Streamlit page: account_id box (plus a "random account" button for rehearsal)
-- [ ] KPI cards: income I, spending S, fixed costs F, buffer B, runway
-- [ ] Chart: monthly money in and out with the buffer line (last 24 months)
-- [ ] Spending breakdown: bills, insurance, loans, card, cash, other transfers
-- [ ] Risk flags: days below zero, defaulted loan, buffer under 1 month of spending
-- [ ] **Peer comparison:** "Better than 64% of customers with similar income in the same region"
-- [ ] Footnote showing the definitions, so you can answer "how did you get that number?"
+- [x] Streamlit page: account_id box (plus a "random account" button for rehearsal)
+- [x] KPI cards: income I, spending S, fixed costs F, buffer B, runway
+- [x] Chart: monthly money in and out with the buffer line (last 24 months)
+- [x] Spending breakdown: bills, insurance, loans, card, cash, other transfers
+- [x] Risk flags: days below zero, defaulted loan, buffer under 1 month of spending
+- [x] **Peer comparison:** "Better than 64% of customers with similar income in the same region"
+- [x] Footnote showing the definitions, so you can answer "how did you get that number?"
 
 **Done when:** It runs locally with `streamlit run app.py` and loads any account in under 2 seconds.
 
 ### Phase 3a — "Take a shock" and "Make a plan" · H+9 → H+14 (A + B)
 *Goal: Run any twist card live in under 30 seconds and explain the result.*
 
-- [ ] Shock panel: income % slider, EI length, bills +%, rent/other +$, one-off ($ or × S), EI cap on/off, and "apply twist card" preset buttons
-- [ ] **Twist card reader (D7):** a text box where rules parse phrases like "EI 55% for 6 months", "bills up 15%", "rent +$300" or "a full month of spending" into slider values, e.g. `{"income_factor":0.55,"income_months":6,"bills_pct":0.15}`. Always show the parsed values before applying, so a misread is caught on screen. The reader never calculates; the engine does all the maths
-- [ ] Before and after: runway, with a "do they make it?" verdict for the EI length (runway ≥ EI months)
-- [ ] **Breaking point card (D4):** "They break at income below X% or a one-off above $Y"
-- [ ] **Explain the change:** a waterfall chart from base runway → minus income loss → minus bills → minus one-off → new runway
-- [ ] Buffer burn-down chart: month-by-month balance after the shock, showing when it hits zero
-- [ ] **Goal plan:** emergency fund target = 3 × S (6 × S if they've ever gone below zero). Months to reach it = (target − B) / surplus. If the surplus is ≤ 0, show the cut needed to get there
-- [ ] **Backup plan (if the shock hits):** cut the flexible categories first (card withdrawals, genuine cash withdrawals, other transfers out) and show the cut % needed to reach 6 months of runway. Keep bills, insurance and loans fixed
-- [ ] Plain-language summary of 2–3 sentences, generated from the numbers (rule-based text that sounds like an advisor)
+- [x] Shock panel: income % slider, EI length, bills +%, rent/other +$, one-off ($ or × S), EI cap on/off, and "apply twist card" preset buttons
+- [x] **Twist card reader (D7):** a text box where rules parse phrases like "EI 55% for 6 months", "bills up 15%", "rent +$300" or "a full month of spending" into slider values, e.g. `{"income_factor":0.55,"income_months":6,"bills_pct":0.15}`. Always show the parsed values before applying, so a misread is caught on screen. The reader never calculates; the engine does all the maths *(twist.py; tests cover 9 card styles)*
+- [x] Before and after: runway, with a "do they make it?" verdict for the EI length (runway ≥ EI months)
+- [x] **Breaking point card (D4):** "They break at income below X% or a one-off above $Y"
+- [x] **Explain the change:** a waterfall chart from base runway → minus income loss → minus bills → minus one-off → new runway
+- [x] Buffer burn-down chart: month-by-month balance after the shock, showing when it hits zero
+- [x] **Goal plan:** emergency fund target = 3 × S (6 × S if they've ever gone below zero). Months to reach it = (target − B) / surplus. If the surplus is ≤ 0, show the cut needed to get there
+- [x] **Backup plan (if the shock hits):** cut the flexible categories first (card withdrawals, genuine cash withdrawals, other transfers out) and show the cut % needed to reach 6 months of runway. Keep bills, insurance and loans fixed
+- [x] Plain-language summary of 2–3 sentences, generated from the numbers (rule-based text that sounds like an advisor)
 
 **Done when:** All three example twists run live on 5 random accounts without errors, and each takes under 30 seconds to explain.
 
@@ -252,27 +252,27 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 ### Phase 3c — Real-time views · H+12 → H+15 (B + D)
 *Goal: Moving a slider updates the customer and the whole bank together, live.*
 
-- [ ] **Survival panel (D2):** "X% chance of making it T months" plus the fan chart, rerun on every slider change
-- [ ] **Bank-wide stress panel (D3):** share of customers under 3 months, a runway histogram, and a map or heatmap by region, rerun on every twist
-- [ ] Show the compute time on screen ("4,500 customers × 2,000 futures in 0.4 s") so judges see the HPC working
-- [ ] Use `st.cache_resource` for the profiles array and keep the C++ call the only thing that runs on each change
-- [ ] **Live feed panel (D9):** a "Live" toggle that polls Tiger Data `profile_live` every 1–2 seconds (`st.fragment(run_every=...)`) while `replay.py` streams transactions. The KPI cards, runway and survival probability update as each month lands
-- [ ] A small data-source badge on screen: "Tiger Data live" or "Offline cache"
+- [x] **Survival panel (D2):** "X% chance of making it T months" plus the fan chart, rerun on every slider change
+- [x] **Bank-wide stress panel (D3):** share of customers under 3 months, a runway histogram, and a map or heatmap by region, rerun on every twist *(heatmap by region x income band instead of a map)*
+- [x] Show the compute time on screen ("4,500 customers × 2,000 futures in 0.4 s") so judges see the HPC working
+- [x] Use `st.cache_resource` for the profiles array and keep the C++ call the only thing that runs on each change *(cache_data keyed on the shock; bank run ~0.6 s)*
+- [x] **Live feed panel (D9):** a "Live" toggle that polls Tiger Data `profile_live` every 1–2 seconds (`st.fragment(run_every=...)`) while `replay.py` streams transactions. The KPI cards, runway and survival probability update as each month lands *(checked: the app moved Sep -> Nov -> Dec 2025 during a replay)*
+- [x] A small data-source badge on screen: "Tiger Data live" or "Offline cache"
 
 **Done when:** A slider change updates both panels in under 1 second on the demo laptop, and a replay visibly moves one customer's numbers live.
 
 ### Phase 4 — Discovery (35% of the score) · H+5 → H+16 (C, using D's sweep once ready)
 *Goal: One finding across all accounts that a judge remembers, backed by a chart.*
 
-- [ ] `discovery.py`: every discovery table is a named, repeatable function over `engine.profiles_all()` and the C++ sweep, cached to Parquet so the app's discovery tab works offline
-- [ ] Run each twist across all 4,500 accounts. What % don't make it 6 months on EI? Which groups are most fragile?
-- [ ] **Check against defaults (D5):** does low runway or buffer predict loan default (`defaulted`) among the 682 loans? Report the default rate by runway band, and the ratio between the bottom and top bands
-- [ ] **Tipping point:** use the C++ sweep to find the shock size where the share of customers under 3 months jumps sharply. "A 10% bills rise hurts few people; 20% tips 1 in 4 over"
-- [ ] **Time machine (D6):** for customers whose loan defaulted, replay their months (in Tiger Data with `replay.py`) and find how many months earlier the engine would have flagged them
-- [ ] Regional view: fragility by district against `unemployment_rate_2023` and `average_salary`
-- [ ] **Canadian realism (D8):** compare the judges' EI (55% × I) with the capped EI. How many customers lose runway because of the weekly maximum?
+- [x] `discovery.py`: every discovery table is a named, repeatable function over `engine.profiles_all()` and the C++ sweep, cached to Parquet so the app's discovery tab works offline *(cache/discovery/*.parquet)*
+- [x] Run each twist across all 4,500 accounts. What % don't make it 6 months on EI? Which groups are most fragile? *(35% can't last 6 months on EI; the top income band is the most exposed (70%))*
+- [x] **Check against defaults (D5):** does low runway or buffer predict loan default (`defaulted`) among the 682 loans? Report the default rate by runway band, and the ratio between the bottom and top bands *(runway under 3 months: 80% defaulted vs 8% with no shortfall)*
+- [x] **Tipping point:** use the C++ sweep to find the shock size where the share of customers under 3 months jumps sharply. "A 10% bills rise hurts few people; 20% tips 1 in 4 over" *(no sharp tipping point: under EI the share under 3 months rises smoothly from 10% to 16% as bills go 0 to 50%. Reported as is)*
+- [x] **Time machine (D6):** for customers whose loan defaulted, replay their months (in Tiger Data with `replay.py`) and find how many months earlier the engine would have flagged them *(early-warning rule found 71% of defaults a median 16 months ahead, using only data available at each month)*
+- [x] Regional view: fragility by district against `unemployment_rate_2023` and `average_salary` *(no link: r = 0.06 with unemployment, -0.05 with salary)*
+- [x] **Canadian realism (D8):** compare the judges' EI (55% × I) with the capped EI. How many customers lose runway because of the weekly maximum? *(the real EI cap pushes another 16% of customers below 6 months)*
 - [ ] Size shocks with Canadian sources (CPI, CMHC rent, EI maximum, Labour Force Survey) and record each link in `SOURCES.md`
-- [ ] Choose **one main finding** and put it on the app's landing tab as a single chart and sentence
+- [x] Choose **one main finding** and put it on the app's landing tab as a single chart and sentence *('The twist is the early warning' page)*
 
 **Done when:** The finding chart is in the app, and `discovery.ipynb` runs from start to finish.
 

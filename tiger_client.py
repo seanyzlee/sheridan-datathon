@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent
 LIVE = "Tiger Data live"
 OFFLINE = "Offline cache"
 
-_CONNECT_TIMEOUT = 5
+_CONNECT_TIMEOUT = 3
 _RETRY_AFTER = 30.0          # seconds to wait before trying Tiger again after a failure
 _last_failure = 0.0
 _conn = None

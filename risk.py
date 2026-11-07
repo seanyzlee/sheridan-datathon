@@ -23,12 +23,16 @@ EI_MONTHLY_MAX = engine.EI_MONTHLY_MAX
 CPI_ANNUAL = 0.028                  # CPI 12-month change, April 2026 (StatCan 18-10-0004-01)
 BILLS_GROWTH_MONTHLY = (1 + CPI_ANNUAL) ** (1 / 12) - 1
 
-# One-off repairs / surprise costs (roadmap default)
-REPAIR_RATE = 0.05                  # chance per month
-REPAIR_LO, REPAIR_HI = 0.5, 2.0     # size as a multiple of S
 EI_MONTHS_RANDOM = 6                # EI length after a random job loss
-
 SD_WINDOW = 24                      # months used for each customer's own volatility
+
+# Calibrated by discovery.backtest(): profiles as of Jun 2025, simulated to Dec 2025, compared with
+# the real month-end balances. Real monthly flows are lumpy but mean-reverting, so drawing each month
+# independently with the full volatility overstates risk (16% predicted vs 1.8% actual). Scaling the
+# noise to 30% and keeping small repairs gave the best Brier score, beating the deterministic formula.
+NOISE_SCALE = 0.3                   # share of each customer's raw month-to-month volatility used as noise
+REPAIR_RATE = 0.01                  # chance per month of a one-off repair
+REPAIR_LO, REPAIR_HI = 0.25, 1.0    # repair size as a multiple of S
 
 # --------------------------------------------------------------------------- input layout shared by C++ and NumPy
 
@@ -126,6 +130,7 @@ def params_array(profiles: pd.DataFrame | None = None, risk: pd.DataFrame | None
     df = profiles[["account_id", "I", "S", "H", "B"]].merge(
         risk[["account_id", "sd_in", "sd_out", "p_job"]], on="account_id", how="left", validate="1:1")
     df = df.fillna({"sd_in": 0.0, "sd_out": 0.0, "p_job": 0.0})
+    df[["sd_in", "sd_out"]] *= NOISE_SCALE
     return np.ascontiguousarray(df[PARAM_COLUMNS].to_numpy(np.float64))
 
 
@@ -133,4 +138,5 @@ def params_one(p: engine.Profile, risk_row=None) -> np.ndarray:
     if risk_row is None:
         r = risk_factors_all().set_index("account_id")
         risk_row = r.loc[p.account_id] if p.account_id in r.index else {"sd_in": 0.0, "sd_out": 0.0, "p_job": 0.0}
-    return np.array([p.I, p.S, p.H, p.B, risk_row["sd_in"], risk_row["sd_out"], risk_row["p_job"]], dtype=np.float64)
+    return np.array([p.I, p.S, p.H, p.B, NOISE_SCALE * risk_row["sd_in"], NOISE_SCALE * risk_row["sd_out"],
+                     risk_row["p_job"]], dtype=np.float64)

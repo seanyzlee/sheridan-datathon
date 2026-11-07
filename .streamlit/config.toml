@@ -1,0 +1,5 @@
+[theme]
+primaryColor = "#F57C00"
+
+[server]
+runOnSave = true

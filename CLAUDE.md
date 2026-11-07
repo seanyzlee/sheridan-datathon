@@ -1,7 +1,7 @@
 # Sheridan Datathon 2026 — Tangerine "Resilience Rewired"
 
 The build plan is in `docs/ROADMAP.md`. Read it at the start of every session and work on the first unchecked task.
-Current phase: **Phase 2 — Customer app** (Phases 0, 1, 1b and 3b done).
+Current phase: **Phase 4 wrap-up, then Phases 5–6** (Phases 0–3c done; app runs with `.venv/Scripts/streamlit.exe run app.py`).
 
 Rebuild the C++ core after editing `hpc/`: `uv pip install --python .venv/Scripts/python.exe ./hpc` (bump the version in `hpc/pyproject.toml` so uv reinstalls).
 
