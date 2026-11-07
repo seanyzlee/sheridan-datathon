@@ -195,12 +195,12 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 *Goal: Tiger Data holds the data, computes the same profile numbers as the engine, and a replay script makes them update live.*
 
 #### Tiger Data
-- [ ] Schema (with `design-postgres-tables` and `setup-timescaledb-hypertables`): `transactions` hypertable on `date` with a `segmentby account_id` columnstore, plus accounts and loans tables
-- [ ] `monthly_live`: real-time continuous aggregate by account and month with the same category columns as monthly_summary
-- [ ] End-of-day balance table and `avg_daily_balance` with `time_weight('LOCF', ...)`. Check it against monthly_summary
-- [ ] `profile_live` view: exact medians with `percentile_cont`, last-6-month buffer, loan payment. It must match `engine.profile()`
-- [ ] `replay.py`: empties a demo account's recent transactions, then inserts them back in date order at a chosen speed (e.g. one month per second) so the profile visibly updates. A `--account` and `--from` option picks who and when
-- [ ] `tiger_client.py`: the app's live data source, falling back to Parquet if Tiger Data can't be reached
+- [x] Schema (with `design-postgres-tables` and `setup-timescaledb-hypertables`): `transactions` hypertable on `date` with a `segmentby account_id` columnstore, plus accounts and loans tables *(tiger/schema.sql: 1-year chunks, columnstore segmentby account_id)*
+- [x] `monthly_live`: real-time continuous aggregate by account and month with the same category columns as monthly_summary *(CAGG `monthly_flows` + view `monthly_live`; flows match monthly_summary exactly on all 185,326 account-months)*
+- [x] End-of-day balance table and `avg_daily_balance` with `time_weight('LOCF', ...)`. Check it against monthly_summary *(plain-SQL LOCF instead of time_weight; end-of-day balance found from the balance chain because the within-day order isn't in the data. Within a cent on all but 23 account-months, so the headline B uses the challenge's avg_daily_balance for the same months)*
+- [x] `profile_live` view: exact medians with `percentile_cont`, last-6-month buffer, loan payment. It must match `engine.profile()` *(I, S, F, H, B, P exact on all 4,500 accounts; ~35 ms per account)*
+- [x] `replay.py`: empties a demo account's recent transactions, then inserts them back in date order at a chosen speed (e.g. one month per second) so the profile visibly updates. A `--account` and `--from` option picks who and when *(~0.3 s per month, restores the data even after Ctrl+C)*
+- [x] `tiger_client.py`: the app's live data source, falling back to Parquet if Tiger Data can't be reached
 
 **Done when:** `pytest` shows Tiger `profile_live` and `engine.profile()` agree on 50 random accounts, and `replay.py` changes an account's runway on screen within 2 seconds of each inserted month.
 

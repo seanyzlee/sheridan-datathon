@@ -1,7 +1,7 @@
 # Sheridan Datathon 2026 — Tangerine "Resilience Rewired"
 
 The build plan is in `docs/ROADMAP.md`. Read it at the start of every session and work on the first unchecked task.
-Current phase: **Phase 1b — Data platform** (Phases 0 and 1 done).
+Current phase: **Phase 2 — Customer app** (Phases 0, 1 and 1b done).
 
 Use the project venv: `.venv/Scripts/python.exe` (Python 3.12). The system Python 3.14 has numpy blocked by Windows Application Control. Run tests with `.venv/Scripts/python.exe -m pytest`.
 
