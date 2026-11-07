@@ -1,0 +1,21 @@
+# Data and engine
+pandas>=2.2
+pyarrow>=17
+numpy>=2.0
+
+# App and charts
+streamlit>=1.40
+plotly>=5.24
+
+# Notebooks and tests
+jupyter
+pytest>=8
+
+# Cloud: Tiger Data (Postgres) and Snowflake
+psycopg[binary]>=3.2
+snowflake-connector-python[pandas]>=3.12
+python-dotenv>=1.0
+
+# C++ core build (hpc/)
+pybind11>=2.13
+scikit-build-core>=0.10

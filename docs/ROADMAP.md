@@ -161,20 +161,22 @@ Use a fixed random seed so the same twist always gives the same answer during th
 
 ## 4. Phases
 
-Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC. With 3 people, A takes on D after Phase 1. **C** owns Snowflake and **A** owns Tiger Data in Phase 1b.
+Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC.
+
+**Team of 2:** **Person 1 = A + D** (engine, Tiger Data, C++ core) and **Person 2 = B + C** (app, discovery and story, Snowflake). Pick who is who at kickoff. Phases 3a and 3c are shared; when one person is blocked, they take the next unchecked task from the other lane.
 
 ### Phase 0 — Setup · H+0 → H+1
 *Goal: Everyone can load all the data in under 5 seconds, the C++ toolchain builds on the HPC laptop, and both cloud accounts accept a connection.*
 
-- [ ] Clone the repo and add `data/`, `cache/` and `.env` to `.gitignore` (don't commit the bank data unless the rules allow it)
-- [ ] `requirements.txt`: pandas, pyarrow, numpy, streamlit, plotly, pytest, jupyter, pybind11, scikit-build-core, snowflake-connector-python[pandas], psycopg[binary], python-dotenv
-- [ ] **Snowflake:** create a trial account (or use the event's), then a warehouse (XS), a database `RESILIENCE` and a schema `RAW`. Put the account, user and key or password in `.env`. Install the Snowflake CLI (`snow`) for the semantic view skill
-- [ ] **Tiger Data:** create a Tiger Cloud service with TimescaleDB and the `timescaledb_toolkit` extension. Put the connection string in `.env`
-- [ ] `check_cloud.py`: runs `SELECT CURRENT_VERSION()` on Snowflake and `SELECT extversion FROM pg_extension WHERE extname='timescaledb'` on Tiger Data
-- [ ] `load.py`: read each CSV once, cast `month` to a period and `partner_bank` to text, and write Parquet to `cache/`
+- [x] Clone the repo and add `data/`, `cache/` and `.env` to `.gitignore` (don't commit the bank data unless the rules allow it)
+- [x] `requirements.txt`: pandas, pyarrow, numpy, streamlit, plotly, pytest, jupyter, pybind11, scikit-build-core, snowflake-connector-python[pandas], psycopg[binary], python-dotenv
+- [ ] **Snowflake:** create a trial account (or use the event's), then a warehouse (XS), a database `RESILIENCE` and a schema `RAW`. Put the account, user and key or password in `.env`. Install the Snowflake CLI (`snow`) for the semantic view skill *(deferred: CLI installed, account not set up yet)*
+- [x] **Tiger Data:** create a Tiger Cloud service with TimescaleDB and the `timescaledb_toolkit` extension. Put the connection string in `.env`
+- [x] `check_cloud.py`: runs `SELECT CURRENT_VERSION()` on Snowflake and `SELECT extversion FROM pg_extension WHERE extname='timescaledb'` on Tiger Data
+- [x] `load.py`: read each CSV once, cast `month` to a period and `partner_bank` to text, and write Parquet to `cache/`
 - [ ] Check row counts: monthly_summary 185,326, transactions 1,056,320, loans 682, accounts 4,500
-- [ ] **D:** a "hello world" pybind11 module with OpenMP that builds with one command and imports in Python (on Windows, use MSVC or MinGW and check that `/openmp` or `-fopenmp` works)
-- [ ] Split the work across A, B, C and D
+- [x] **D:** a "hello world" pybind11 module with OpenMP that builds with one command and imports in Python (on Windows, use MSVC or MinGW and check that `/openmp` or `-fopenmp` works)
+- [x] Split the work across A, B, C and D (2 people, see Roles)
 
 **Done when:** `python load.py` prints the row counts, `python -c "import resil_hpc; print(resil_hpc.threads())"` prints the core count, and `python check_cloud.py` connects to both Snowflake and Tiger Data.
 

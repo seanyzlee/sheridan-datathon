@@ -18,3 +18,7 @@ __pycache__/
 build/
 *.pyd
 *.so
+
+# Local tools
+.venv/
+*.egg-info/
