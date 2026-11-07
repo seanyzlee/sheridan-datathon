@@ -37,8 +37,8 @@ Most teams will show one runway number from the judges' formula. We show that nu
 | **HPC core** | **C++17 + OpenMP, exposed to Python with pybind11** (`hpc/`) | Monte Carlo across accounts × paths × months in parallel on every CPU core |
 | HPC build | CMake + scikit-build-core, or `pip install -e hpc/` | One command to build. Test the build on every laptop at H+0 |
 | HPC fallback | NumPy version `sim_numpy.py` with the same function signature | The demo never depends on the compiler working |
-| App | Streamlit | Sliders and an account box in minutes. Works well for a live demo |
-| Charts | Plotly | Fan charts and heatmaps that look good in the video |
+| App | React + Vite + TypeScript (`frontend/`) over a thin FastAPI layer (`api.py`) | Animated live updates, Tangerine branding, and work against mocks before the engine exists. See `docs/frontend_implementation.md` |
+| Charts | ECharts (app), Plotly or matplotlib (notebook) | Fan charts and histograms that animate between twists |
 | Discovery | Jupyter notebook `discovery.ipynb` | Runs the engine across all accounts |
 | Tests | pytest (Python) and a C++ check run from pytest | C++ results must match Python on the same inputs |
 | Repo | `seanyzlee/sheridan-datathon` | Private now. Make it public or zip it before submitting |
@@ -130,7 +130,7 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 *Goal: Everyone can load all the data in under 5 seconds, and the C++ toolchain builds on the HPC laptop.*
 
 - [ ] Clone the repo and add `data/` to `.gitignore` (don't commit the bank data unless the rules allow it)
-- [ ] `requirements.txt`: pandas, pyarrow, numpy, streamlit, plotly, pytest, jupyter, pybind11, scikit-build-core
+- [ ] `requirements.txt`: pandas, pyarrow, numpy, fastapi, uvicorn, plotly, pytest, jupyter, pybind11, scikit-build-core
 - [ ] `load.py`: read each CSV once, cast `month` to a period and `partner_bank` to text, and write Parquet to `cache/`
 - [ ] Check row counts: monthly_summary 185,326, transactions 1,056,320, loans 682, accounts 4,500
 - [ ] **D:** a "hello world" pybind11 module with OpenMP that builds with one command and imports in Python (on Windows, use MSVC or MinGW and check that `/openmp` or `-fopenmp` works)
@@ -155,7 +155,7 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 ### Phase 2 — "Know the customer" app · H+3 → H+9 (B)
 *Goal: A judge types any account_id and sees the customer's position in one screen.*
 
-- [ ] Streamlit page: account_id box (plus a "random account" button for rehearsal)
+- [ ] Advisor Console (`frontend/`): account_id box (plus a "random account" button for rehearsal). The frontend is built against mocks. What's left is `api.py` from `docs/frontend_implementation.md` §3
 - [ ] KPI cards: income I, spending S, fixed costs F, buffer B, runway
 - [ ] Chart: monthly money in and out with the buffer line (last 24 months)
 - [ ] Spending breakdown: bills, insurance, loans, card, cash, other transfers
@@ -163,7 +163,7 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 - [ ] **Peer comparison:** "Better than 64% of customers with similar income in the same region"
 - [ ] Footnote showing the definitions, so you can answer "how did you get that number?"
 
-**Done when:** It runs locally with `streamlit run app.py` and loads any account in under 2 seconds.
+**Done when:** It runs locally with `uvicorn api:app` plus `npm run dev` in `frontend/` (with `VITE_DATA_SOURCE=live`) and loads any account in under 2 seconds.
 
 ### Phase 3a — "Take a shock" and "Make a plan" · H+9 → H+14 (A + B)
 *Goal: Run any twist card live in under 30 seconds and explain the result.*
@@ -203,7 +203,7 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 - [ ] **Survival panel (D2):** "X% chance of making it T months" plus the fan chart, rerun on every slider change
 - [ ] **Bank-wide stress panel (D3):** share of customers under 3 months, a runway histogram, and a map or heatmap by region, rerun on every twist
 - [ ] Show the compute time on screen ("4,500 customers × 2,000 futures in 0.4 s") so judges see the HPC working
-- [ ] Use `st.cache_resource` for the profiles array and keep the C++ call the only thing that runs on each change
+- [ ] Load the profiles array once when FastAPI starts, and keep the C++ call the only thing that runs on each change
 
 **Done when:** A slider change updates both panels in under 1 second on the demo laptop.
 
@@ -252,7 +252,7 @@ Take turns: at least two people sleep in shifts while one keeps working. Don't s
 |-------|-------|-------|--------|
 | 0 Setup | 0–1 | All | Parquet cache, C++ toolchain working |
 | 1 Engine | 1–5 | A | `engine.py` + tests + breaking point |
-| 2 Customer app | 3–9 | B | `app.py` profile view + peers |
+| 2 Customer app | 3–9 | B | `api.py` for the built `frontend/` (profile view + peers) |
 | 3a Shock + plan | 9–14 | A+B | Twist panel, twist reader, plans |
 | 3b C++ core | 5–14 | D | `resil_hpc`, NumPy fallback, benchmark |
 | 3c Real-time views | 12–15 | B+D | Survival and bank-wide panels |
