@@ -8,7 +8,7 @@ Times are hours from the start (H+0). Shift them to the real kickoff time.
 - **In one sentence:** Enter an `account_id`, see how long the customer can last and **how likely they are to make it**, apply any shock live, and watch both the customer and the whole bank update in real time, powered by a C++ simulation core.
 - **Who it's for:** The judges during the 3-minute live twist first, then a bank advisor talking with a customer, and a risk team watching the whole book of customers.
 - **Why it matters:** Banks see the transactions but not the runway. This turns 1M transactions into one number per customer, a survival probability, and a plan to improve it.
-- **Constraints:** 24 hours. It has to run live and fast on any of the 4,500 accounts. Its numbers have to match the judges' definitions.
+- **Constraints:** 24 hours. It has to run live and fast on any of the 4,500 accounts. Its numbers have to match the judges' definitions. The final product uses the **Snowflake API** and **Tiger Data**.
 - **What wins (judging weights):** Discovery 35%, Data Use 25%, Communication 25%, Impact 15%.
 
 ### What makes us different
@@ -25,14 +25,36 @@ Most teams will show one runway number from the judges' formula. We show that nu
 | D6 | **Time machine and early warning** | Replay a customer who defaulted, month by month, and show the engine flagging them N months before | Discovery, Communication |
 | D7 | **Twist card reader** | Paste the judge's twist text and it fills in the sliders, with the parsed values shown for the presenter to check | Communication |
 | D8 | **Canadian realism** | EI with the real weekly maximum, rent shocks sized from CMHC, and inflation from CPI, shown next to the judges' numbers | Data Use, Impact |
+| D9 | **Live transaction feed (Tiger Data)** | Transactions stream into a Tiger Data hypertable, and continuous aggregates update the customer's income, spending, buffer and runway within seconds of each new transaction | Data Use, Impact |
+| D10 | **Bank-wide analytics in Snowflake** | All 1M transactions and 4,500 profiles live in Snowflake. Discovery queries, the default check and the shock sweep results are stored and queried there through the Snowflake API, and Cortex reads the twist cards | Discovery, Data Use |
 
-**The rule that protects us:** the judges' deterministic formula (Python, tested) is always the headline number. C++ and Monte Carlo add to it but never replace it. If the C++ build fails, the app falls back to NumPy and still works.
+**The rule that protects us:** the judges' deterministic formula (Python, tested) is always the headline number. C++ and Monte Carlo add to it but never replace it. If the C++ build fails, the app falls back to NumPy. If Snowflake, Tiger Data or the Wi-Fi fails during judging, the app falls back to the local Parquet cache and still runs the live twist.
+
+### How the pieces fit
+
+```
+CSVs ──► load.py ──► Parquet cache (local fallback)
+                 ├─► Snowflake  (warehouse: all tables, discovery SQL, sweep results, Cortex twist reader)
+                 └─► Tiger Data (time series: transactions + monthly_summary hypertables,
+                                 continuous aggregates → live I, S, H, B per account)
+
+replay.py ──► streams transactions in date order into Tiger Data  (live feed, D9 + time machine, D6)
+
+app.py (Streamlit)
+  ├─ profile + judges' runway ◄── Tiger Data (live) or Parquet (fallback)
+  ├─ survival + bank-wide panels ◄── C++ core (resil_hpc) or NumPy fallback
+  ├─ discovery tab ◄── Snowflake (or cached results)
+  └─ twist card reader ◄── Snowflake Cortex, or rule-based fallback
+```
 
 ## 2. Stack
 
 | Layer | Choice | Why |
 |-------|--------|-----|
-| Data | pandas + Parquet cache | The CSVs are small enough for memory. Parquet makes reloads instant |
+| Data (local) | pandas + Parquet cache | The CSVs are small enough for memory. Parquet makes reloads instant and is the offline fallback |
+| **Warehouse** | **Snowflake** via `snowflake-connector-python` (and Snowpark if useful) | Holds every table for discovery SQL across all accounts, stores sweep results, and runs Cortex `COMPLETE` for the twist reader |
+| **Time series** | **Tiger Data (Tiger Cloud, TimescaleDB)** via `psycopg` | Hypertables for transactions and monthly_summary. Real-time continuous aggregates keep each account's monthly totals and balances current as transactions arrive |
+| Secrets | `.env` file (git-ignored) + `python-dotenv` | Snowflake and Tiger credentials never go in the repo |
 | Engine (truth) | Plain Python `engine.py` (pure functions) | The judges' formula, easy to test, imported by the app and the notebook |
 | **HPC core** | **C++17 + OpenMP, exposed to Python with pybind11** (`hpc/`) | Monte Carlo across accounts × paths × months in parallel on every CPU core |
 | HPC build | CMake + scikit-build-core, or `pip install -e hpc/` | One command to build. Test the build on every laptop at H+0 |
@@ -116,6 +138,21 @@ outputs: P(balance stays above 0 for T months), month the balance first goes bel
 ```
 Use a fixed random seed so the same twist always gives the same answer during the live demo.
 
+### Where each table lives
+
+| Table | Parquet | Snowflake | Tiger Data |
+|-------|---------|-----------|------------|
+| transactions | ✓ | ✓ | ✓ hypertable on `date`, segmented by `account_id` |
+| monthly_summary | ✓ | ✓ | ✓ hypertable on `month` (loaded for checking) |
+| monthly_live | | | ✓ real-time continuous aggregate built from transactions (`time_bucket('1 month', date)`), same columns as monthly_summary |
+| profile | ✓ | ✓ | ✓ view: exact medians with `percentile_cont(0.5)` over `monthly_live` rows, last-6-month buffer |
+| accounts, loans, districts, clients, dispositions, cards, standing_orders | ✓ | ✓ | ✓ plain tables (loans and accounts only) |
+| sim_results, sweep_results | ✓ | ✓ written by the C++ core runs | |
+
+**Exact numbers rule:** I, S, H and B must be exact medians and means, so compute them with `percentile_cont` over monthly rows, not with approximate toolkit percentiles. Use toolkit hyperfunctions (e.g. `stats_agg`) only for extra live statistics such as volatility. For the buffer, `avg_daily_balance` needs end-of-day balances carried forward over quiet days: build it with `time_weight('LOCF', ...)` over end-of-day balances, and if it doesn't match `monthly_summary.avg_daily_balance` exactly, take B from the loaded monthly_summary table for the judges' number.
+
+**Check:** `monthly_live` must reproduce `monthly_summary.csv` for every account and month (money_in, money_out and the category columns) before the live feed is trusted.
+
 ### Joins used for discovery
 - accounts → districts (unemployment, average_salary)
 - accounts → loans (defaulted, as the ground truth)
@@ -124,19 +161,22 @@ Use a fixed random seed so the same twist always gives the same answer during th
 
 ## 4. Phases
 
-Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC. With 3 people, A takes on D after Phase 1.
+Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC. With 3 people, A takes on D after Phase 1. **C** owns Snowflake and **A** owns Tiger Data in Phase 1b.
 
 ### Phase 0 — Setup · H+0 → H+1
-*Goal: Everyone can load all the data in under 5 seconds, and the C++ toolchain builds on the HPC laptop.*
+*Goal: Everyone can load all the data in under 5 seconds, the C++ toolchain builds on the HPC laptop, and both cloud accounts accept a connection.*
 
-- [ ] Clone the repo and add `data/` to `.gitignore` (don't commit the bank data unless the rules allow it)
-- [ ] `requirements.txt`: pandas, pyarrow, numpy, streamlit, plotly, pytest, jupyter, pybind11, scikit-build-core
+- [ ] Clone the repo and add `data/`, `cache/` and `.env` to `.gitignore` (don't commit the bank data unless the rules allow it)
+- [ ] `requirements.txt`: pandas, pyarrow, numpy, streamlit, plotly, pytest, jupyter, pybind11, scikit-build-core, snowflake-connector-python[pandas], psycopg[binary], python-dotenv
+- [ ] **Snowflake:** create a trial account (or use the event's), then a warehouse (XS), a database `RESILIENCE` and a schema `RAW`. Put the account, user and key or password in `.env`. Install the Snowflake CLI (`snow`) for the semantic view skill
+- [ ] **Tiger Data:** create a Tiger Cloud service with TimescaleDB and the `timescaledb_toolkit` extension. Put the connection string in `.env`
+- [ ] `check_cloud.py`: runs `SELECT CURRENT_VERSION()` on Snowflake and `SELECT extversion FROM pg_extension WHERE extname='timescaledb'` on Tiger Data
 - [ ] `load.py`: read each CSV once, cast `month` to a period and `partner_bank` to text, and write Parquet to `cache/`
 - [ ] Check row counts: monthly_summary 185,326, transactions 1,056,320, loans 682, accounts 4,500
 - [ ] **D:** a "hello world" pybind11 module with OpenMP that builds with one command and imports in Python (on Windows, use MSVC or MinGW and check that `/openmp` or `-fopenmp` works)
 - [ ] Split the work across A, B, C and D
 
-**Done when:** `python load.py` prints the row counts, and `python -c "import resil_hpc; print(resil_hpc.threads())"` prints the core count.
+**Done when:** `python load.py` prints the row counts, `python -c "import resil_hpc; print(resil_hpc.threads())"` prints the core count, and `python check_cloud.py` connects to both Snowflake and Tiger Data.
 
 ### Phase 1 — The engine matches the judges · H+1 → H+5 (A)
 *Goal: `python engine.py 1234 --ei 0.55 --bills 0.15` prints the same runway the judges would get.*
@@ -151,6 +191,25 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 - [ ] pytest: work out 3 accounts by hand in a spreadsheet and assert the engine returns the same numbers
 
 **Done when:** All tests pass, and every one of the 4,500 accounts runs without an error in under 1 second total from the cache.
+
+### Phase 1b — Data platform: Snowflake and Tiger Data · H+2 → H+8 (C for Snowflake, A for Tiger Data after Phase 1)
+*Goal: Both clouds hold the data, Tiger Data computes the same profile numbers as the engine, and a replay script makes them update live.*
+
+#### Snowflake
+- [ ] `sf_load.py`: create tables with the right types, `PUT` the CSVs to an internal stage, `COPY INTO` each table, and check the row counts match
+- [ ] `PROFILE` view in SQL: I, S, F, H with `MEDIAN()`, B from the last 6 months with a window function, P from loans. It must match `engine.profile()` for every account
+- [ ] Semantic view over profile, loans and districts (with the `snowflake-semanticview` skill) so Cortex can answer plain-language questions about the bank
+- [ ] `sf_client.py`: one small module the app and notebook use to query Snowflake, with results cached to Parquet so the app still works offline
+
+#### Tiger Data
+- [ ] Schema (with `design-postgres-tables` and `setup-timescaledb-hypertables`): `transactions` hypertable on `date` with a `segmentby account_id` columnstore, plus accounts and loans tables
+- [ ] `monthly_live`: real-time continuous aggregate by account and month with the same category columns as monthly_summary
+- [ ] End-of-day balance table and `avg_daily_balance` with `time_weight('LOCF', ...)`. Check it against monthly_summary
+- [ ] `profile_live` view: exact medians with `percentile_cont`, last-6-month buffer, loan payment. It must match `engine.profile()`
+- [ ] `replay.py`: empties a demo account's recent transactions, then inserts them back in date order at a chosen speed (e.g. one month per second) so the profile visibly updates. A `--account` and `--from` option picks who and when
+- [ ] `tiger_client.py`: the app's live data source, falling back to Parquet if Tiger Data can't be reached
+
+**Done when:** `pytest` shows Snowflake `PROFILE`, Tiger `profile_live` and `engine.profile()` agree on 50 random accounts, and `replay.py` changes an account's runway on screen within 2 seconds of each inserted month.
 
 ### Phase 2 — "Know the customer" app · H+3 → H+9 (B)
 *Goal: A judge types any account_id and sees the customer's position in one screen.*
@@ -169,7 +228,7 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 *Goal: Run any twist card live in under 30 seconds and explain the result.*
 
 - [ ] Shock panel: income % slider, EI length, bills +%, rent/other +$, one-off ($ or × S), EI cap on/off, and "apply twist card" preset buttons
-- [ ] **Twist card reader (D7):** a text box that turns phrases like "EI 55% for 6 months", "bills up 15%" or "a full month of spending" into slider values with simple rules. Show the parsed values before applying, so a misread is caught on screen
+- [ ] **Twist card reader (D7):** a text box that sends the twist text to Snowflake Cortex (`SNOWFLAKE.CORTEX.COMPLETE` with a strict JSON prompt) and gets back slider values, e.g. `{"income_factor":0.55,"income_months":6,"bills_pct":0.15}`. If Cortex fails or is slow, simple rules handle phrases like "EI 55% for 6 months", "bills up 15%" or "a full month of spending". Always show the parsed values before applying, so a misread is caught on screen. Cortex only reads the card; the engine does all the maths
 - [ ] Before and after: runway, with a "do they make it?" verdict for the EI length (runway ≥ EI months)
 - [ ] **Breaking point card (D4):** "They break at income below X% or a one-off above $Y"
 - [ ] **Explain the change:** a waterfall chart from base runway → minus income loss → minus bills → minus one-off → new runway
@@ -204,16 +263,20 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 - [ ] **Bank-wide stress panel (D3):** share of customers under 3 months, a runway histogram, and a map or heatmap by region, rerun on every twist
 - [ ] Show the compute time on screen ("4,500 customers × 2,000 futures in 0.4 s") so judges see the HPC working
 - [ ] Use `st.cache_resource` for the profiles array and keep the C++ call the only thing that runs on each change
+- [ ] **Live feed panel (D9):** a "Live" toggle that polls Tiger Data `profile_live` every 1–2 seconds (`st.fragment(run_every=...)`) while `replay.py` streams transactions. The KPI cards, runway and survival probability update as each month lands
+- [ ] Write each bank-wide run to Snowflake `SIM_RESULTS` (account, scenario, survival probability, runway) in the background, so discovery can query every scenario the team has run
+- [ ] A small data-source badge on screen: "Tiger Data live", "Snowflake" or "Offline cache"
 
-**Done when:** A slider change updates both panels in under 1 second on the demo laptop.
+**Done when:** A slider change updates both panels in under 1 second on the demo laptop, and a replay visibly moves one customer's numbers live.
 
 ### Phase 4 — Discovery (35% of the score) · H+5 → H+16 (C, using D's sweep once ready)
 *Goal: One finding across all accounts that a judge remembers, backed by a chart.*
 
+- [ ] Run discovery queries in Snowflake (through `sf_client.py`) so every chart comes from a saved, repeatable SQL query. Keep the SQL in `sql/discovery/`
 - [ ] Run each twist across all 4,500 accounts. What % don't make it 6 months on EI? Which groups are most fragile?
 - [ ] **Check against defaults (D5):** does low runway or buffer predict loan default (`defaulted`) among the 682 loans? Report the default rate by runway band, and the ratio between the bottom and top bands
 - [ ] **Tipping point:** use the C++ sweep to find the shock size where the share of customers under 3 months jumps sharply. "A 10% bills rise hurts few people; 20% tips 1 in 4 over"
-- [ ] **Time machine (D6):** for customers whose loan defaulted, replay their months and find how many months earlier the engine would have flagged them
+- [ ] **Time machine (D6):** for customers whose loan defaulted, replay their months (in Tiger Data with `replay.py`) and find how many months earlier the engine would have flagged them
 - [ ] Regional view: fragility by district against `unemployment_rate_2023` and `average_salary`
 - [ ] **Canadian realism (D8):** compare the judges' EI (55% × I) with the capped EI. How many customers lose runway because of the weekly maximum?
 - [ ] Size shocks with Canadian sources (CPI, CMHC rent, EI maximum, Labour Force Survey) and record each link in `SOURCES.md`
@@ -232,7 +295,9 @@ Take turns: at least two people sleep in shifts while one keeps working. Don't s
 - [ ] Order for each live twist: judges' runway first (it matches their answer), then survival probability, then the breaking point, then the plan, and end on the bank-wide panel
 - [ ] Practise one-sentence answers: "Why median?", "Why don't you count EI length in runway?", "Why C++?", "Where do the probabilities come from?", "What if they have no income?"
 - [ ] Speed: preload the cache when the app starts and remove anything that takes more than 2 seconds
-- [ ] Backup plan: a screen recording, the NumPy fallback, and a notebook version in case the Wi-Fi, the build or the app fails
+- [ ] Run at least one rehearsal with the Wi-Fi turned off, to prove the Parquet fallback works for every panel the live twist needs
+- [ ] Resume the Snowflake warehouse and check Tiger Data is awake 10 minutes before judging
+- [ ] Backup plan: a screen recording, the NumPy fallback, the offline cache, and a notebook version in case the Wi-Fi, a cloud service, the build or the app fails
 
 **Done when:** A full run takes under 5 minutes, with no errors on random accounts.
 
@@ -240,7 +305,8 @@ Take turns: at least two people sleep in shifts while one keeps working. Don't s
 *Goal: Submitted on Devpost with an hour to spare.*
 
 - [ ] Demo video, 2–3 minutes: pitch, one live twist with the survival and bank-wide panels, the benchmark, the finding
-- [ ] Write-up: what the engine does, the main finding, and a short "how the C++ core works" section with the benchmark table
+- [ ] Write-up: what the engine does, the main finding, a short "how the C++ core works" section with the benchmark table, and the architecture diagram (Snowflake, Tiger Data, C++ core, app)
+- [ ] Check that no credentials are in the repo history before making it public (`git log -p | grep -i -E "password|secret|token"`). Rotate any key that ever got committed
 - [ ] `SOURCES.md` and README credits: PKDD'99 Financial dataset (CTU Prague), plus every StatCan or Government of Canada link used
 - [ ] README: setup in 3 commands (including building `hpc/`) and a screenshot
 - [ ] Make the repo public (or attach a zip) and check the link in a private window
@@ -250,8 +316,9 @@ Take turns: at least two people sleep in shifts while one keeps working. Don't s
 
 | Phase | Hours | Owner | Output |
 |-------|-------|-------|--------|
-| 0 Setup | 0–1 | All | Parquet cache, C++ toolchain working |
+| 0 Setup | 0–1 | All | Parquet cache, C++ toolchain, cloud connections |
 | 1 Engine | 1–5 | A | `engine.py` + tests + breaking point |
+| 1b Data platform | 2–8 | C (Snowflake), A (Tiger) | Loaded clouds, matching profile views, `replay.py` |
 | 2 Customer app | 3–9 | B | `app.py` profile view + peers |
 | 3a Shock + plan | 9–14 | A+B | Twist panel, twist reader, plans |
 | 3b C++ core | 5–14 | D | `resil_hpc`, NumPy fallback, benchmark |
@@ -261,18 +328,45 @@ Take turns: at least two people sleep in shifts while one keeps working. Don't s
 | 5 Rehearse | 18–21 | All | Pitch + Q&A answers |
 | 6 Submit | 21–24 | All | Video, write-up, Devpost |
 
-**Cut order if behind schedule** (drop from the top first): C++ time machine replay → map view → peer comparison → twist card reader → bank-wide panel. Never cut: the judges' runway, the shock panel, the plans, the default check, the NumPy fallback.
+**Cut order if behind schedule** (drop from the top first): C++ time machine replay → map view → Snowflake semantic view → peer comparison → Cortex twist reader (keep the rule-based one) → bank-wide panel. Never cut: the judges' runway, the shock panel, the plans, the default check, the NumPy and Parquet fallbacks, at least one Snowflake query and the Tiger Data live feed (they're required in the final product).
 
-## 6. Deliberately Not Building
+## 6. Skills to Use in Each Phase
 
-- Logins, accounts or a database. Judges need speed, not security theatre
-- Deploying to the cloud. Run it locally for the demo; deploy only if there's time after H+21
+Installed globally with `npx skills add <skill> -g -y`. Each one was checked on GitHub before installing.
+
+| Phase | Skill | Use it for |
+|-------|-------|-----------|
+| All | `roadmap` | `status` to see progress. Use plan mode only; don't let `start` mode deploy or run on its own |
+| 0, 1b | `cortex-code` (snowflake-labs) | Snowflake setup and SQL through the Cortex Code CLI (needs that CLI installed) |
+| 1b | `snowflake-semanticview` | Semantic view for Cortex, using the `snow` CLI |
+| 1b | `design-postgres-tables` (timescale) | Tiger Data schema for accounts and loans |
+| 1b | `setup-timescaledb-hypertables` (timescale) | Transactions hypertable, columnstore, continuous aggregates |
+| 1b, 3c | `timescaledb-hyperfunctions` (timescale) | `time_weight` for the daily balance, `stats_agg` for volatility |
+| 1, 4 | `pandas-pro` | Profile maths, joins and discovery tables |
+| 1, 4 | `data:sql-queries` / `data:write-query` (already available) | Snowflake discovery SQL |
+| 2, 3a, 3c | `developing-with-streamlit` (official Streamlit) | App layout, caching, `st.fragment` live refresh |
+| 3b | `cpp-pro` | The C++17 simulation core and CMake build |
+| 3b | `openmp` | Parallel loops, per-thread random generators, avoiding false sharing |
+| 1, 3b | `pytest-coverage` | Tests against the judges' numbers and the C++/NumPy checks |
+| 6 | `demo-video` | The 2–3 minute Devpost video |
+| 6 | `create-readme` | README with setup and credits |
+
+## 7. Deliberately Not Building
+
+- Logins or user accounts. Judges need speed, not security theatre
+- Writing customer-facing data back into the source tables. Snowflake and Tiger Data are loaded from the CSVs; only simulation results and replays are written
+- Deploying the app to the cloud. The app runs locally and talks to Snowflake and Tiger Data; deploy it (e.g. Streamlit in Snowflake) only if there's time after H+21
+- Making the live twist depend on the network. Every panel the twist needs must also work from the Parquet cache
 - GPU / CUDA. Multi-core C++ is fast enough for this data size and far less risky to build in 24 hours
-- An LLM chat agent as the main interface. It's slower and can make up numbers during a live twist. The twist reader uses simple rules and always shows what it parsed
+- An LLM chat agent as the main interface. It's slower and can make up numbers during a live twist. Cortex only reads the twist card into slider values, always shows what it parsed, and never calculates
 - ML default prediction as the product. Use default data only to check the engine
 - Replacing the judges' formula with the simulation. The simulation adds to the headline number and never replaces it
 
-## 7. Open Questions to Settle Early (H+0 → H+2)
+## 8. Open Questions to Settle Early (H+0 → H+2)
+
+- **Cloud accounts:** does the event provide Snowflake or Tiger Data credits or accounts? If not, use the free trials. Who owns each login?
+- **Cortex availability:** check that `CORTEX.COMPLETE` and the chosen model are enabled in your Snowflake region, or allow cross-region calls
+- **Data in the cloud:** check the event rules allow uploading the bank data to Snowflake and Tiger Data
 
 - **F definition:** median of each row's sum, or the sum of three medians? The plan assumes each row's sum. Ask in #ask-a-mentor
 - **Loan "running at end of 2025":** use date math or status C/D? Check that they agree
