@@ -174,7 +174,7 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 - [x] **Tiger Data:** create a Tiger Cloud service with TimescaleDB and the `timescaledb_toolkit` extension. Put the connection string in `.env`
 - [x] `check_cloud.py`: runs `SELECT CURRENT_VERSION()` on Snowflake and `SELECT extversion FROM pg_extension WHERE extname='timescaledb'` on Tiger Data
 - [x] `load.py`: read each CSV once, cast `month` to a period and `partner_bank` to text, and write Parquet to `cache/`
-- [ ] Check row counts: monthly_summary 185,326, transactions 1,056,320, loans 682, accounts 4,500
+- [x] Check row counts: monthly_summary 185,326, transactions 1,056,320, loans 682, accounts 4,500
 - [x] **D:** a "hello world" pybind11 module with OpenMP that builds with one command and imports in Python (on Windows, use MSVC or MinGW and check that `/openmp` or `-fopenmp` works)
 - [x] Split the work across A, B, C and D (2 people, see Roles)
 
