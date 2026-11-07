@@ -11,9 +11,8 @@ plotly>=5.24
 jupyter
 pytest>=8
 
-# Cloud: Tiger Data (Postgres) and Snowflake
+# Cloud: Tiger Data (Postgres)
 psycopg[binary]>=3.2
-snowflake-connector-python[pandas]>=3.12
 python-dotenv>=1.0
 
 # C++ core build (hpc/)
