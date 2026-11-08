@@ -24,7 +24,19 @@
     "url": "http://127.0.0.1:8000/?account=20396&inc=55&eim=6",
     "width": 1440,
     "dark": false,
-    "violations": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "nodes": 46,
+        "targets": [
+          ".ap-plan-sub",
+          ".btn-quiet.btn:nth-child(1)",
+          "figcaption"
+        ]
+      }
+    ],
     "console_errors": []
   },
   {

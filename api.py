@@ -336,6 +336,7 @@ def customer_shock(account_id: int, body: ShockIn, live: bool = True) -> dict:
         "waterfall": records(plan.waterfall(p, s)),
         "burn_down": burn,
         "backup": asdict(plan.backup_plan(p, s)),
+        "flow": plan.money_flow(p, s),
     })
 
 
@@ -399,6 +400,7 @@ def bank(body: ShockIn, top: int = 25) -> dict:
             heat.append({"region": region, "band": band, "share": pv[("mean", band)].get(region),
                          "n": pv[("size", band)].get(region)})
     worst = df.sort_values(["survival", "runway"]).head(max(1, min(top, 200)))
+    by_region = df.assign(under3=rw < 3).groupby("region", observed=True)["under3"].agg(["mean", "size"])
     return clean({
         "shock": shock_dict(s), "target": target, "seconds": secs, "backend": simulate.BACKEND,
         "paths": simulate.BANK_PATHS, "months": simulate.BANK_MONTHS, "customers": int(len(df)),
@@ -407,6 +409,7 @@ def bank(body: ShockIn, top: int = 25) -> dict:
                  "expected_run_out": float(1 - df["survival"].mean()),
                  "likely_run_out": float((df["survival"] < 0.5).mean())},
         "histogram": hist, "heatmap": heat, "regions": list(pv.index), "bands": INCOME_BANDS,
+        "regions_under3": [{"region": reg, "share": float(row["mean"]), "n": int(row["size"])} for reg, row in by_region.iterrows()],
         "worst": records(worst[["account_id", "region", "district_name", "I", "S", "B", "runway",
                                 "no_shortfall", "survival"]]),
     })
@@ -458,6 +461,18 @@ def bank_surface(body: ShockIn) -> dict:
 
 # --------------------------------------------------------------------------- endpoints: discovery
 
+def _in_people(rate: float | None) -> dict:
+    """A rate as people: "8 in 10" when it's high, "about 1 in 15" when it's low, with the icons to draw
+    (`people` in the row, `filled` of them shaded)."""
+    if rate is None or rate <= 0:
+        return {"people": 10, "filled": 0, "in_words": "none"}
+    if rate >= 0.25:
+        k = max(1, round(rate * 10))
+        return {"people": 10, "filled": k, "in_words": f"{k} in 10"}
+    n = max(2, round(1 / rate))
+    return {"people": n, "filled": 1, "in_words": f"about 1 in {n}"}
+
+
 @app.get("/api/finding")
 def finding() -> dict:
     e = discovery.ei_cap_effect()
@@ -465,7 +480,7 @@ def finding() -> dict:
     return clean({
         "main": discovery.main_finding(),
         "rules": records(discovery.early_warning_summary()),
-        "default_by_band": records(discovery.default_by_band()),
+        "default_by_band": [{**d, **_in_people(d["default_rate"])} for d in records(discovery.default_by_band())],
         "fragile_groups": records(discovery.fragile_groups()),
         "tipping_point": records(discovery.tipping_point()),
         "twist_impact": records(discovery.twist_impact()),
@@ -485,7 +500,8 @@ def _defaulted_list() -> list[dict]:
     typical = finished.iloc[(finished["lead_months"] - finished["lead_months"].median()).abs().argsort()].head(1)
     d = pd.concat([typical, d.drop(typical.index)])
     return [{"account_id": int(r.account_id), "lead_months": None if pd.isna(r.lead_months) else int(r.lead_months),
-             "status": r.status} for r in d.itertuples()]
+             "status": r.status, "known": str(r.known),
+             "first_flag": None if pd.isna(r.first_flag) else str(r.first_flag)} for r in d.itertuples()]
 
 
 @app.get("/api/time-machine")

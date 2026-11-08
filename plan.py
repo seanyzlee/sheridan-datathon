@@ -186,6 +186,39 @@ def backup_plan(p: Profile, s: Shock, target: float = TARGET_RUNWAY) -> BackupPl
     return BackupPlan(target, False, cut, flex, pct, possible, new)
 
 
+# --------------------------------------------------------------------------- money flow
+
+def money_flow(p: Profile, s: Shock) -> dict:
+    """Where a typical month's money comes from and goes after the shock, balanced so both sides add up.
+
+    Out: fixed costs (F, capped at S), the rest of typical spending (flexible), the bills rise (bills_pct x H)
+    and any other increase. A cut (negative other increase) comes off flexible spending. In: the income after
+    the shock, then whatever is taken from savings to cover the rest. If income is larger, the surplus is an
+    extra "Left over" item on the out side. With no cut bigger than flexible spending, "From savings" equals
+    the judges' monthly gap.
+    """
+    r = runway(p, s)
+    fixed = float(min(max(p.F, 0.0), max(p.S, 0.0)))
+    flexible = float(max(p.S, 0.0) - fixed)
+    cut = min(s.spend_delta, 0.0)
+    out = [{"key": "fixed", "label": "Fixed costs", "amount": fixed},
+           {"key": "flexible", "label": "Everyday spending", "amount": max(0.0, flexible + cut)}]
+    if s.bills_pct and p.H:
+        out.append({"key": "bills", "label": f"Bills up {s.bills_pct:.0%}", "amount": float(s.bills_pct * p.H)})
+    if s.spend_delta > 0:
+        out.append({"key": "other", "label": "Other costs up", "amount": float(s.spend_delta)})
+    total_out = sum(o["amount"] for o in out)
+    income = float(max(r.income, 0.0))
+    used = min(income, total_out)
+    inflow = [{"key": "income", "label": "Income" if s.income_factor >= 1 else "Income after the shock", "amount": used}]
+    if total_out > used:
+        inflow.append({"key": "savings", "label": "From savings", "amount": total_out - used})
+    if income > used:
+        out.append({"key": "left", "label": "Left over", "amount": income - used})
+        inflow[0]["amount"] = income
+    return {"in": inflow, "out": out, "total": float(sum(i["amount"] for i in inflow))}
+
+
 # --------------------------------------------------------------------------- plain-language summary
 
 def _m(x: float) -> str:

@@ -1,9 +1,10 @@
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Surface } from "../api";
 import { RobustResizeObserver } from "../components/Sized";
+import { reducedMotion } from "../motion";
 import { usePalette, type Palette } from "../theme";
 
 // The bank-wide stress surface, drawn with React Three Fiber.
@@ -11,10 +12,14 @@ import { usePalette, type Palette } from "../theme";
 // The camera sits at the no-shock corner, so the surface rises away from the viewer toward the worst case.
 // Height and colour: share of all customers whose savings last under 3 months (judges' formula, from the API).
 // Every number on screen comes from the server; positions between grid points are only for drawing.
+//
+// "Play the wave" builds the surface one income level at a time, from full income down to none, the way the
+// Time machine replays month by month. Playback only scales the drawing; the readout shows the server's values.
 
 const W = 2.4;   // x extent (income)
 const D = 2.0;   // z extent (bills)
 const H = 1.2;   // y extent (share)
+const MS_PER_COLUMN = 190;   // about 4 seconds for the whole sweep
 
 const pctLabel = (v: number, d = 0) => `${(v * 100).toFixed(d)}%`;
 
@@ -24,6 +29,14 @@ function niceMax(v: number): number {
 }
 
 interface Geo { x: (i: number) => number; z: (j: number) => number; y: (v: number) => number; yMax: number }
+
+/** Income columns raised so far (fractional while one is rising); null means the surface is fully built. */
+type Build = number | null;
+const easeOut = (t: number) => 1 - (1 - t) ** 3;
+/** How far column i has risen, 0 to 1. */
+function rise(build: Build, i: number): number {
+  return build == null ? 1 : easeOut(Math.min(1, Math.max(0, build - i)));
+}
 
 function useGeo(s: Surface): Geo {
   return useMemo(() => {
@@ -44,23 +57,15 @@ function rampColor(pal: Palette, t: number, out: THREE.Color): THREE.Color {
   return out.set(stops[k]).lerp(new THREE.Color(stops[k + 1]), f - k);
 }
 
-function SurfaceMesh({ s, g, pal, onHover, onPick }: {
-  s: Surface; g: Geo; pal: Palette; onHover: (ij: [number, number] | null) => void; onPick: (ij: [number, number]) => void;
+function SurfaceMesh({ s, g, pal, build, onHover, onPick }: {
+  s: Surface; g: Geo; pal: Palette; build: Build; onHover: (ij: [number, number] | null) => void; onPick: (ij: [number, number]) => void;
 }) {
+  const invalidate = useThree((st) => st.invalidate);
   const geometry = useMemo(() => {
     const ni = s.income.length, nj = s.bills.length;
-    const pos = new Float32Array(ni * nj * 3);
-    const col = new Float32Array(ni * nj * 3);
-    const c = new THREE.Color();
-    for (let i = 0; i < ni; i++) {
-      for (let j = 0; j < nj; j++) {
-        const k = (i * nj + j) * 3;
-        const v = s.under3[i][j];
-        pos[k] = g.x(i); pos[k + 1] = g.y(v); pos[k + 2] = g.z(j);
-        rampColor(pal, v / g.yMax, c);
-        col[k] = c.r; col[k + 1] = c.g; col[k + 2] = c.b;
-      }
-    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(ni * nj * 3), 3));
+    geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(ni * nj * 3), 3));
     const idx: number[] = [];
     for (let i = 0; i < ni - 1; i++) {
       for (let j = 0; j < nj - 1; j++) {
@@ -68,14 +73,32 @@ function SurfaceMesh({ s, g, pal, onHover, onPick }: {
         idx.push(a, b, d, b, cc, d);
       }
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
     geo.setIndex(idx);
-    geo.computeVertexNormals();
-    geo.computeBoundingSphere();
     return geo;
-  }, [s, g, pal]);
+  }, [s]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+
+  // Heights and colours: each column at its current rise (all 1 when built), then redraw on demand.
+  useLayoutEffect(() => {
+    const ni = s.income.length, nj = s.bills.length;
+    const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
+    const col = geometry.getAttribute("color") as THREE.BufferAttribute;
+    const c = new THREE.Color();
+    for (let i = 0; i < ni; i++) {
+      const f = rise(build, i);
+      for (let j = 0; j < nj; j++) {
+        const v = s.under3[i][j] * f;
+        pos.setXYZ(i * nj + j, g.x(i), g.y(v), g.z(j));
+        rampColor(pal, v / g.yMax, c);
+        col.setXYZ(i * nj + j, c.r, c.g, c.b);
+      }
+    }
+    pos.needsUpdate = true;
+    col.needsUpdate = true;
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    invalidate();
+  }, [geometry, build, s, g, pal, invalidate]);
 
   const nearest = (p: THREE.Vector3): [number, number] => {
     const i = Math.round(((p.x + W / 2) / W) * (s.income.length - 1));
@@ -85,23 +108,29 @@ function SurfaceMesh({ s, g, pal, onHover, onPick }: {
 
   return (
     <mesh geometry={geometry}
-          onPointerMove={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); onHover(nearest(e.point)); }}
+          onPointerMove={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); if (build == null) onHover(nearest(e.point)); }}
           onPointerOut={() => onHover(null)}
-          onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); if (e.delta < 4) onPick(nearest(e.point)); }}>
+          onClick={(e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); if (e.delta < 4 && build == null) onPick(nearest(e.point)); }}>
       <meshStandardMaterial vertexColors side={THREE.DoubleSide} roughness={0.85} metalness={0}
                             polygonOffset polygonOffsetFactor={1} polygonOffsetUnits={1} />
     </mesh>
   );
 }
 
-/** A line that follows the surface along one grid row or column. */
-function SurfaceLine({ s, g, along, index, color, width, opacity = 1 }: {
-  s: Surface; g: Geo; along: "income" | "bills"; index: number; color: string; width: number; opacity?: number;
+/** A line that follows the surface along one grid row or column (and rises with it while the wave builds). */
+function SurfaceLine({ s, g, along, index, color, width, opacity = 1, build = null }: {
+  s: Surface; g: Geo; along: "income" | "bills"; index: number; color: string; width: number; opacity?: number; build?: Build;
 }) {
   const pts = useMemo(() => {
-    if (along === "bills") return s.bills.map((_, j) => [g.x(index), g.y(s.under3[index][j]) + 0.004, g.z(j)] as [number, number, number]);
-    return s.income.map((_, i) => [g.x(i), g.y(s.under3[i][index]) + 0.004, g.z(index)] as [number, number, number]);
-  }, [s, g, along, index]);
+    if (along === "bills") {
+      const f = rise(build, index);
+      return s.bills.map((_, j) => [g.x(index), g.y(s.under3[index][j] * f) + 0.004, g.z(j)] as [number, number, number]);
+    }
+    // A line across income stops at the front of the wave while it builds.
+    const upto = build == null ? s.income.length : Math.min(s.income.length, Math.ceil(build));
+    return s.income.slice(0, upto).map((_, i) => [g.x(i), g.y(s.under3[i][index] * rise(build, i)) + 0.004, g.z(index)] as [number, number, number]);
+  }, [s, g, along, index, build]);
+  if (pts.length < 2 || (along === "bills" && build != null && build <= index)) return null;
   return <Line points={pts} color={color} lineWidth={width} transparent={opacity < 1} opacity={opacity} />;
 }
 
@@ -189,19 +218,61 @@ function FitCamera() {
   return null;
 }
 
+/** Play, pause and scrub the wave building up (requestAnimationFrame only while playing). */
+function useBuild(columns: number, resetKey: unknown) {
+  const [build, setBuild] = useState<Build>(null);
+  const [playing, setPlaying] = useState(false);
+  const raf = useRef(0);
+  useEffect(() => { setPlaying(false); setBuild(null); }, [resetKey]);   // a new shock shows the finished surface
+  useEffect(() => {
+    if (!playing) return;
+    if (reducedMotion()) { setBuild(null); setPlaying(false); return; }
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = (now - last) / MS_PER_COLUMN;
+      last = now;
+      setBuild((b) => {
+        const next = (b ?? 0) + dt;
+        if (next >= columns + 0.999) { setPlaying(false); return null; }
+        return next;
+      });
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf.current);
+  }, [playing, columns]);
+  const toggle = () => {
+    if (playing) { setPlaying(false); return; }
+    setBuild((b) => b ?? 0);
+    setPlaying(true);
+  };
+  const scrub = (v: number) => { setPlaying(false); setBuild(v >= columns ? null : v); };
+  return { build, playing, toggle, scrub };
+}
+
 export default function StressSurface({ s, onPick, markerLabel }: {
   s: Surface; onPick: (income: number, bills: number) => void; markerLabel: string;
 }) {
   const pal = usePalette();
   const g = useGeo(s);
   const [hover, setHover] = useState<[number, number] | null>(null);
-  const reduceMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const reduceMotion = reducedMotion();
   const ei = s.income.indexOf(55);
+  const ni = s.income.length, nj = s.bills.length;
+  const { build, playing, toggle, scrub } = useBuild(ni, s);
+  // The column at the front of the wave: the income level whose numbers the readout shows while it builds.
+  const front = build == null ? null : Math.min(ni - 1, Math.max(0, Math.ceil(build) - 1));
 
   return (
     <div className="surface-wrap" style={{ cursor: hover ? "pointer" : "grab" }}>
-      <div className="surface-readout" aria-live="polite">
-        {hover ? (
+      <div className="surface-readout" aria-live={playing ? "off" : "polite"}>
+        {front != null ? (
+          <>
+            <span className="lbl">Income kept {s.income[front]}%</span>
+            <strong>{pctLabel(s.under3[front][0], 1)}</strong>
+            <span>under 3 months; {pctLabel(s.under3[front][nj - 1], 1)} if bills also go up {s.bills[nj - 1]}%</span>
+          </>
+        ) : hover ? (
           <>
             <span className="lbl">Income {s.income[hover[0]]}%, bills +{s.bills[hover[1]]}%</span>
             <strong>{pctLabel(s.under3[hover[0]][hover[1]], 1)}</strong>
@@ -216,24 +287,36 @@ export default function StressSurface({ s, onPick, markerLabel }: {
         )}
       </div>
       <div className="surface-hint" aria-hidden>Drag to turn · scroll to zoom · click to apply</div>
+      <div className="surface-play">
+        <button type="button" className="btn btn-primary" onClick={toggle} aria-pressed={playing}>
+          {playing ? "Pause" : build == null ? "Play the wave" : "Resume"}
+        </button>
+        <label htmlFor="surface-build" className="sr-only">Build the surface up to an income level</label>
+        <input id="surface-build" type="range" min={0} max={ni} step={1} value={build == null ? ni : Math.ceil(build)}
+               aria-valuetext={front == null ? "Whole surface" : `Income kept ${s.income[front]}%`}
+               onChange={(e) => scrub(Number(e.target.value))} />
+        <span className="pg-month surface-play-level" aria-hidden>{front == null ? "All" : `${s.income[front]}%`}</span>
+      </div>
       <Canvas frameloop="demand" dpr={[1, 2]} camera={{ position: [-3.0, 2.3, 3.2], fov: 40 }}
               resize={{ polyfill: RobustResizeObserver as unknown as typeof ResizeObserver }}
               gl={{ antialias: true, alpha: true }} flat>
         <ambientLight intensity={0.75} />
         <directionalLight position={[2, 4, 3]} intensity={1.1} />
         <group position={[0, -0.35, 0]}>
-          <SurfaceMesh s={s} g={g} pal={pal}
+          <SurfaceMesh s={s} g={g} pal={pal} build={build}
                        onHover={(ij) => setHover((h) => (h?.[0] === ij?.[0] && h?.[1] === ij?.[1] ? h : ij))}
                        onPick={([i, j]) => onPick(s.income[i], s.bills[j])} />
           {/* recessive mesh lines every 20% of income and 10% of bills */}
-          {s.income.map((v, i) => (v % 20 === 0 ? <SurfaceLine key={`i${v}`} s={s} g={g} along="bills" index={i} color={pal.ink} width={0.6} opacity={0.18} /> : null))}
-          {s.bills.map((v, j) => (v % 10 === 0 ? <SurfaceLine key={`b${v}`} s={s} g={g} along="income" index={j} color={pal.ink} width={0.6} opacity={0.18} /> : null))}
+          {s.income.map((v, i) => (v % 20 === 0 ? <SurfaceLine key={`i${v}`} s={s} g={g} along="bills" index={i} color={pal.ink} width={0.6} opacity={0.18} build={build} /> : null))}
+          {s.bills.map((v, j) => (v % 10 === 0 ? <SurfaceLine key={`b${v}`} s={s} g={g} along="income" index={j} color={pal.ink} width={0.6} opacity={0.18} build={build} /> : null))}
           {/* the two slices the Main finding charts: employed (blue) and on EI at 55% (tangerine) */}
-          <SurfaceLine s={s} g={g} along="bills" index={0} color={pal.today} width={3} />
-          {ei >= 0 && <SurfaceLine s={s} g={g} along="bills" index={ei} color={pal.shock} width={3} />}
+          <SurfaceLine s={s} g={g} along="bills" index={0} color={pal.today} width={3} build={build} />
+          {ei >= 0 && <SurfaceLine s={s} g={g} along="bills" index={ei} color={pal.shock} width={3} build={build} />}
           <Axes s={s} g={g} pal={pal} />
-          <Marker s={s} g={g} pal={pal} label={markerLabel} />
-          {hover && (
+          {build == null
+            ? <Marker s={s} g={g} pal={pal} label={markerLabel} />
+            : front != null && <SurfaceLine s={s} g={g} along="bills" index={front} color={pal.ink} width={2.5} build={build} />}
+          {hover && build == null && (
             <mesh position={[g.x(hover[0]), g.y(s.under3[hover[0]][hover[1]]) + 0.01, g.z(hover[1])]}>
               <sphereGeometry args={[0.035, 20, 14]} />
               <meshBasicMaterial color={pal.today} />

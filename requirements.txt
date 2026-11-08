@@ -23,6 +23,9 @@ pytest>=8
 psycopg[binary]>=3.2
 python-dotenv>=1.0
 
+# Publishing the demo to Hugging Face Spaces (tools/make_space.py, then `hf upload`)
+huggingface_hub>=0.34
+
 # C++ core build (hpc/)
 pybind11>=2.13
 scikit-build-core>=0.10

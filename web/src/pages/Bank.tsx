@@ -1,9 +1,9 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ReferenceArea, Tooltip, XAxis, YAxis } from "recharts";
 import { api, type Bank as BankT } from "../api";
-import { axisProps, cursorBand, gridProps, MARGIN, yAxisProps } from "../charts/common";
+import { anim, axisProps, cursorBand, gridProps, MARGIN, yAxisProps } from "../charts/common";
 import { ChartFrame, DataTable, ErrorNote, Loading, SectionHead, Stat, TipBox } from "../components/ui";
 import { describeShock, money, pct, signedPct } from "../format";
 import { useAdvanced, useAppState, useDebounced } from "../state";
@@ -58,7 +58,7 @@ function SurfaceSection({ shock, simple }: { shock: import("../api").Shock; simp
         { label: "On EI (income 55%)", color: pal.shock, shape: "line" },
         { label: "This shock", color: pal.ink, shape: "dashed" },
       ]}
-      table={table} stale={q.isPlaceholderData || s !== shock}
+      table={table} stale={q.isPlaceholderData || s !== shock} interactive
       label={`3D surface of the share of customers under 3 months by income kept and bills increase. It rises from ${pct(d.under3[0][0], 1)} with no shock to ${pct(d.max, 1)} with no income and bills up 50%. This shock: ${pct(d.marker.under3, 1)}.`}>
       {gl ? (
         <Suspense fallback={<div className="surface-wrap"><Loading what="the 3D view" /></div>}>
@@ -80,6 +80,8 @@ function SurfaceSection({ shock, simple }: { shock: import("../api").Shock; simp
 
 function Histogram({ b, stale, simple }: { b: BankT; stale: boolean; simple?: boolean }) {
   const pal = usePalette();
+  // The red zone: the bars for 0 to 3 months, labelled with the server's own share under 3 months.
+  const zone = b.histogram.filter((d) => d.months < 3);
   const table = (
     <DataTable caption="Customers by months of runway" rows={b.histogram} maxHeight={340} columns={[
       { key: "m", label: "Months of runway", render: (d) => (d.months === 36 ? "36 or more" : `${d.months} to ${d.months + 1}`) },
@@ -92,8 +94,12 @@ function Histogram({ b, stale, simple }: { b: BankT; stale: boolean; simple?: bo
                 legend={[{ label: "Under 3 months", color: pal.critical }, { label: "3 months or more", color: pal.today }]}
                 table={table} stale={stale} label="Histogram of runway across all customers under this shock">
       <Sized height={300}>{(w) => (
-        <BarChart width={w} height={300} data={b.histogram} margin={MARGIN} barCategoryGap={2}>
+        <BarChart width={w} height={300} data={b.histogram} margin={{ ...MARGIN, top: 26 }} barCategoryGap={2}>
           <CartesianGrid {...gridProps(pal)} />
+          {zone.length > 0 && (
+            <ReferenceArea x1={zone[0].label} x2={zone[zone.length - 1].label} fill={pal.critical} fillOpacity={0.07} stroke="none" ifOverflow="visible"
+                           label={{ value: `${pct(b.kpis.under3, 1)} under 3 months`, position: "insideTopLeft", fill: pal.ink, fontSize: 12, fontWeight: 650, dy: -22 }} />
+          )}
           <XAxis dataKey="label" {...axisProps(pal)} interval={5} height={36} />
           <YAxis {...yAxisProps(pal)} width={48} />
           <Tooltip cursor={cursorBand(pal)} content={({ active, payload }) => {
@@ -102,8 +108,8 @@ function Histogram({ b, stale, simple }: { b: BankT; stale: boolean; simple?: bo
             return <TipBox title={d.months === 36 ? "36+ months" : `${d.months} to ${d.months + 1} months`}
                            rows={[{ label: "Customers", value: (d.under3 + d.over3).toLocaleString("en-CA"), color: d.months < 3 ? pal.critical : pal.today, shape: "rect" }]} />;
           }} />
-          <Bar dataKey="under3" stackId="h" fill={pal.critical} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-          <Bar dataKey="over3" stackId="h" fill={pal.today} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="under3" stackId="h" fill={pal.critical} radius={[3, 3, 0, 0]} {...anim()} />
+          <Bar dataKey="over3" stackId="h" fill={pal.today} radius={[3, 3, 0, 0]} {...anim()} />
         </BarChart>
       )}</Sized>
     </ChartFrame>
@@ -168,6 +174,57 @@ function Heatmap({ b, stale }: { b: BankT; stale: boolean }) {
         <span className="heat-scale-bar">{pal.heat.map((c) => <span key={c} style={{ background: c }} />)}</span>
         <span>{pct(max)}</span>
         <span style={{ marginLeft: 8 }}>Columns run from lowest to highest earners.</span>
+      </div>
+    </ChartFrame>
+  );
+}
+
+// A tile map of the 8 regions, laid out roughly where they sit (Bohemia west, Moravia east, Prague inside
+// central Bohemia). Tiles rather than borders: honest at this level and easy to read. Shares are the server's.
+const REGION_TILES: Record<string, [number, number]> = {
+  "north Bohemia": [1, 0], "east Bohemia": [2, 0], "north Moravia": [3, 0],
+  "west Bohemia": [0, 1], "Prague": [1, 1], "central Bohemia": [2, 1], "south Moravia": [3, 1],
+  "south Bohemia": [1, 2],
+};
+
+function RegionTiles({ b, stale, simple }: { b: BankT; stale: boolean; simple?: boolean }) {
+  const pal = usePalette();
+  const rows = b.regions_under3;
+  const max = Math.max(0.0001, ...rows.map((r) => r.share));
+  const color = (v: number) => pal.heat[Math.min(pal.heat.length - 1, Math.floor((v / max) * (pal.heat.length - 0.001)))];
+  const worst = rows.reduce((a, r) => (r.share > a.share ? r : a), rows[0]);
+  const table = (
+    <DataTable caption="Share under 3 months by region" rows={rows} columns={[
+      { key: "r", label: "Region", render: (r) => r.region },
+      { key: "s", label: "Under 3 months", align: "r", render: (r) => pct(r.share, 1) },
+      { key: "n", label: "Customers", align: "r", render: (r) => r.n.toLocaleString("en-CA") },
+    ]} />
+  );
+  return (
+    <ChartFrame title={simple ? "Where they live" : "By region"}
+                sub={simple ? "Share of customers in each region whose savings would last under 3 months" : `Share under 3 months in each region, laid out roughly as a map. Highest: ${worst?.region} (${pct(worst?.share, 1)})`}
+                table={table} stale={stale} label={`Tile map of the share under 3 months by region: ${rows.map((r) => `${r.region} ${pct(r.share, 1)}`).join(", ")}`}>
+      <div className="tiles" aria-hidden>
+        {rows.map((r) => {
+          const pos = REGION_TILES[r.region];
+          if (!pos) return null;
+          const bg = color(r.share);
+          return (
+            <div key={r.region} className={`tile${r.region === worst?.region ? " worst" : ""}`}
+                 style={{ gridColumn: pos[0] + 1, gridRow: pos[1] + 1, background: bg, color: readableInk(bg) }}
+                 title={`${r.region}: ${pct(r.share, 1)} of ${r.n.toLocaleString("en-CA")} customers under 3 months`}>
+              <span className="tile-name">{r.region}</span>
+              <strong className="tile-value">{pct(r.share, 1)}</strong>
+              <span className="tile-n">{r.n.toLocaleString("en-CA")} customers</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="heat-scale">
+        <span>0%</span>
+        <span className="heat-scale-bar">{pal.heat.map((c) => <span key={c} style={{ background: c }} />)}</span>
+        <span>{pct(max, 1)}</span>
+        <span style={{ marginLeft: 8 }}>Bohemia to the west, Moravia to the east.</span>
       </div>
     </ChartFrame>
   );
@@ -249,6 +306,10 @@ export default function Bank() {
                 <HowToRead b={b} />
               </div>
             )}
+          </section>
+
+          <section className="section reveal" aria-label="By region">
+            <div className="pg-card"><RegionTiles b={b} stale={stale} simple={!advanced} /></div>
           </section>
 
           <section className="section reveal" aria-label="Stress surface">

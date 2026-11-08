@@ -48,6 +48,7 @@ export interface ShockResult {
   summary: string;
   waterfall: { step: string; months: number; measure: "absolute" | "relative" | "total" }[];
   burn_down: { month: number; balance: number; ei_ends: number | null; p10: number | null; p50: number | null; p90: number | null }[];
+  flow: { in: FlowItem[]; out: FlowItem[]; total: number };
   backup: { target_months: number; already_ok: boolean; cut_amount: number | null; flexible: number; cut_pct: number | null; possible: boolean; new_runway: number };
 }
 
@@ -56,11 +57,12 @@ export interface Bank {
   kpis: { under3: number; under3_base: number; out_of_money: number; expected_run_out: number; likely_run_out: number };
   histogram: { months: number; label: string; under3: number; over3: number }[];
   heatmap: { region: string; band: string; share: number | null; n: number | null }[];
+  regions_under3: { region: string; share: number; n: number }[];
   regions: string[]; bands: string[];
   worst: { account_id: number; region: string; district_name: string; I: number; S: number; B: number; runway: number; no_shortfall: boolean; survival: number }[];
 }
 
-export interface AutopilotStep { id: string; label: string; detail: string; saving: number; saving_text: string; adds: number; adds_text: string; runway_after_text: string }
+export interface AutopilotStep { id: string; label: string; detail: string; saving: number; saving_text: string; adds: number; adds_text: string; runway_after_text: string; runway_before: number; runway_after: number; no_shortfall_after: boolean }
 export interface Autopilot {
   account_id: number; source: string;
   detection: { detected: boolean; month?: string; ratio?: number; message?: string; drop?: string; income_seen?: string; income_usual?: string; suggested_shock?: Shock };
@@ -80,7 +82,7 @@ export interface Surface {
 export interface Finding {
   main: { headline: string; caught: number; false_alarms: number; ratio: number; median_lead: number; rate_flagged: number; rate_not_flagged: number; ei_under6: number; under3_default_rate: number; no_shortfall_default_rate: number };
   rules: { rule: string; label: string; caught: number; false_alarms: number; default_rate_flagged: number; default_rate_not_flagged: number; ratio: number; median_lead_months: number; flagged: number; defaults: number; loans: number }[];
-  default_by_band: { band: string; default_rate: number; defaults: number; loans: number }[];
+  default_by_band: { band: string; default_rate: number; defaults: number; loans: number; people: number; filled: number; in_words: string }[];
   fragile_groups: { dimension: string; group: string; share_fail_6m_ei: number; customers: number }[];
   tipping_point: { income: string; bills_pct: number; under_3: number; under_6: number }[];
   twist_impact: { twist: string; under_3: number; under_6: number; out_of_money: number; median_runway: number }[];
@@ -88,7 +90,10 @@ export interface Finding {
   regional: { r_unemployment: number; r_salary: number; districts: number; rows: { district_name: string; region: string; share_fail: number; customers: number; unemployment: number; salary: number }[] };
 }
 
-export interface TimeMachineItem { account_id: number; lead_months: number | null; status: string }
+export interface TimeMachineItem { account_id: number; lead_months: number | null; status: string; known: string; first_flag: string | null }
+
+/** One part of a typical month's money after the shock (the server balances both sides). */
+export interface FlowItem { key: string; label: string; amount: number }
 export interface TimeMachine {
   account_id: number; loan_start: string; known: string; status: string; lead_months: number | null; first_flag: string | null;
   months: { month: string; runway: number; runway_ei: number; buffer: number }[];

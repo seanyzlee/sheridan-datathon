@@ -57,8 +57,10 @@ export function DataTable<T>({ columns, rows, caption, onRowClick, maxHeight }: 
 // --------------------------------------------------------------------------- chart frame
 
 /** Title, legend, the chart, and a table-view twin (every value is reachable without hovering). */
-export function ChartFrame({ title, sub, legend, table, stale, children, label }: {
+export function ChartFrame({ title, sub, legend, table, stale, children, label, interactive }: {
   title: string; sub?: ReactNode; legend?: LegendEntry[]; table?: ReactNode; stale?: boolean; children: ReactNode; label?: string;
+  /** The chart holds its own controls (buttons, sliders, focusable marks): a labelled group, not a single image. */
+  interactive?: boolean;
 }) {
   const [showTable, setShowTable] = useState(false);
   const id = useId();
@@ -76,7 +78,7 @@ export function ChartFrame({ title, sub, legend, table, stale, children, label }
         )}
       </div>
       {legend && legend.length > 1 && !showTable && <Legend items={legend} />}
-      <div className={`chart-body${stale ? " stale" : ""}`} role={showTable ? undefined : "img"} aria-label={showTable ? undefined : label ?? title}>
+      <div className={`chart-body${stale ? " stale" : ""}`} role={showTable ? undefined : interactive ? "group" : "img"} aria-label={showTable ? undefined : label ?? title}>
         {showTable ? table : children}
       </div>
     </figure>

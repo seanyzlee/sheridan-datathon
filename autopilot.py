@@ -110,6 +110,8 @@ def ladder(p: Profile, s: Shock, monthly: pd.DataFrame) -> list[dict]:
                      "adds": round(added, 1),
                      "adds_text": ("enough to stop the shortfall" if now.no_shortfall and not prev.no_shortfall
                                    else f"+{added:.1f} months" if added > 0 else "no change"),
+                     "runway_before": _months_value(prev), "runway_after": _months_value(now),
+                     "no_shortfall_after": bool(now.no_shortfall),
                      "runway_after_text": _months(now)})
         prev = now
     return rows

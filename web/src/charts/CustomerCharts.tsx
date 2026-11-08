@@ -6,7 +6,7 @@ import { ChartFrame, DataTable, TipBox } from "../components/ui";
 import { compactMoney, money, shortMonth } from "../format";
 import { usePalette } from "../theme";
 import { Sized } from "../components/Sized";
-import { axisProps, cursorBand, cursorLine, gridProps, MARGIN, yAxisProps } from "./common";
+import { anim, axisProps, cursorBand, cursorLine, gridProps, MARGIN, yAxisProps } from "./common";
 
 // --------------------------------------------------------------------------- monthly history
 // Two small multiples on a shared month axis instead of a dual-axis chart (dataviz rule: one axis).
@@ -36,8 +36,8 @@ export function HistoryCharts({ data, stale }: { data: Customer["monthly"]; stal
               { label: "Money out", value: money(payload[0]?.payload.money_out), color: pal.third, shape: "rect" },
               { label: "Balance", value: money(payload[0]?.payload.balance), color: pal.ink },
             ]} />) : null} />
-          <Bar dataKey="money_in" fill={pal.today} radius={[3, 3, 0, 0]} maxBarSize={10} isAnimationActive={false} />
-          <Bar dataKey="money_out" fill={pal.third} radius={[3, 3, 0, 0]} maxBarSize={10} isAnimationActive={false} />
+          <Bar dataKey="money_in" fill={pal.today} radius={[3, 3, 0, 0]} maxBarSize={10} {...anim()} />
+          <Bar dataKey="money_out" fill={pal.third} radius={[3, 3, 0, 0]} maxBarSize={10} {...anim(80)} />
         </BarChart>
       )}</Sized>
       <div className="chart-sub" style={{ margin: "10px 0 2px" }}>Average daily balance</div>
@@ -48,7 +48,7 @@ export function HistoryCharts({ data, stale }: { data: Customer["monthly"]; stal
           <YAxis {...yAxisProps(pal)} tickFormatter={compactMoney} />
           <Tooltip cursor={cursorLine(pal)} content={() => null} />
           <ReferenceLine y={0} stroke={pal.axis} />
-          <Area dataKey="balance" stroke={pal.ink} strokeWidth={2} fill={pal.ink} fillOpacity={0.06} isAnimationActive={false}
+          <Area dataKey="balance" stroke={pal.ink} strokeWidth={2} fill={pal.ink} fillOpacity={0.06} {...anim(120)}
                 dot={false} activeDot={{ r: 4, stroke: pal.surface, strokeWidth: 2, fill: pal.ink }} />
         </ComposedChart>
       )}</Sized>
@@ -81,7 +81,7 @@ export function SpendingChart({ data, stale }: { data: Customer["spending"]; sta
             <TipBox title={payload[0].payload.category} rows={[
               { label: payload[0].payload.fixed ? "Fixed" : "Can be cut", value: `${money(payload[0].payload.amount)} a month` },
             ]} />) : null} />
-          <Bar dataKey="amount" radius={[0, 4, 4, 0]} maxBarSize={18} isAnimationActive={false}>
+          <Bar dataKey="amount" radius={[0, 4, 4, 0]} maxBarSize={18} {...anim()}>
             {data.map((d) => <Cell key={d.category} fill={d.fixed ? pal.neutral : pal.today} />)}
             <LabelList dataKey="amount" position="right" formatter={(v: number) => money(v)} style={{ fill: pal.ink2, fontSize: 12, fontVariantNumeric: "tabular-nums" }} />
           </Bar>
@@ -97,6 +97,9 @@ export function BurnDownChart({ r, stale, simple }: { r: ShockResult; stale?: bo
   const pal = usePalette();
   const data = r.burn_down.map((d) => ({ ...d, band: d.p10 != null && d.p90 != null ? [d.p10, d.p90] : null }));
   const hasEi = !simple && data.some((d) => d.ei_ends != null && d.ei_ends !== d.balance);
+  const lastMonth = data.length ? data[data.length - 1].month : 0;
+  // Where the judges' straight line crosses zero: the server's runway, drawn as a marker (never recomputed here).
+  const runsOut = !r.runway.no_shortfall && r.runway.months > 0 && r.runway.months <= lastMonth ? r.runway.months : null;
   const legend = simple ? [
     { label: "Most likely", color: pal.ink, shape: "line" as const },
     { label: "Range of likely outcomes", color: pal.shockWash, shape: "band" as const },
@@ -123,7 +126,8 @@ export function BurnDownChart({ r, stale, simple }: { r: ShockResult; stale?: bo
       <Sized height={300}>{(w) => (
         <ComposedChart width={w} height={300} data={data} margin={MARGIN}>
           <CartesianGrid {...gridProps(pal)} />
-          <XAxis dataKey="month" {...axisProps(pal)} tickFormatter={(m) => (m === 0 ? "Now" : String(m))} height={36} />
+          <XAxis dataKey="month" type="number" domain={[0, lastMonth]} allowDecimals={false} {...axisProps(pal)}
+                 tickFormatter={(m) => (m === 0 ? "Now" : String(m))} height={36} />
           <YAxis {...yAxisProps(pal)} tickFormatter={compactMoney} />
           <Tooltip cursor={cursorLine(pal)} content={({ active, payload, label }) => {
             if (!active || !payload?.length) return null;
@@ -143,11 +147,15 @@ export function BurnDownChart({ r, stale, simple }: { r: ShockResult; stale?: bo
             if (hasEi && d.ei_ends != null) rows.push({ label: "If EI ends", value: money(d.ei_ends), color: pal.critical, shape: "dashed" as const });
             return <TipBox title={Number(label) === 0 ? "Now" : `Month ${label}`} rows={rows} />;
           }} />
-          <Area dataKey="band" stroke="none" fill={pal.shock} fillOpacity={0.14} isAnimationActive={false} activeDot={false} />
+          <Area dataKey="band" stroke="none" fill={pal.shock} fillOpacity={0.14} {...anim(150)} activeDot={false} />
           <ReferenceLine y={0} stroke={pal.critical} strokeWidth={1} />
+          {runsOut != null && (
+            <ReferenceLine x={runsOut} stroke={pal.critical} strokeDasharray="3 3" ifOverflow="visible"
+                           label={{ value: `Runs out at ${runsOut.toFixed(1)} months`, position: runsOut > lastMonth * 0.6 ? "insideTopRight" : "insideTopLeft", fill: pal.critical, fontSize: 12, fontWeight: 650 }} />
+          )}
           {hasEi && <Line dataKey="ei_ends" stroke={pal.critical} strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} activeDot={false} />}
           {!simple && <Line dataKey="p50" stroke={pal.shock} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} activeDot={false} />}
-          <Line dataKey="balance" stroke={pal.ink} strokeWidth={2} dot={false} isAnimationActive={false}
+          <Line dataKey="balance" stroke={pal.ink} strokeWidth={2} dot={false} {...anim()}
                 activeDot={{ r: 4, stroke: pal.surface, strokeWidth: 2, fill: pal.ink }} />
         </ComposedChart>
       )}</Sized>
@@ -186,7 +194,7 @@ export function WaterfallChart({ r, stale }: { r: ShockResult; stale?: boolean }
             <TipBox title={payload[0].payload.step} rows={[{ label: payload[0].payload.measure === "relative" ? "Change" : "Runway", value: `${payload[0].payload.label} months` }]} />
           ) : null} />
           <Bar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} />
-          <Bar dataKey="size" stackId="w" radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false}>
+          <Bar dataKey="size" stackId="w" radius={[4, 4, 0, 0]} maxBarSize={24} {...anim()}>
             {data.map((d) => <Cell key={d.i} fill={d.color} />)}
             <LabelList dataKey="label" position="top" style={{ fill: pal.ink, fontSize: 12, fontWeight: 650 }} />
           </Bar>

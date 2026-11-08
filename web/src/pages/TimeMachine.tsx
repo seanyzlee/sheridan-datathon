@@ -15,7 +15,10 @@ const fmt = (m: number) => (m >= 120 ? "120+ months" : `${m.toFixed(1)} months`)
 export default function TimeMachine() {
   const pal = usePalette();
   const list = useQuery({ queryKey: ["tm-list"], queryFn: api.timeMachineList, staleTime: Infinity });
-  const [id, setId] = useState<number | null>(null);
+  const [id, setId] = useState<number | null>(() => {
+    const v = Number(new URLSearchParams(window.location.search).get("replay"));
+    return Number.isFinite(v) && v > 0 ? v : null;
+  });
   const accountId = id ?? list.data?.customers[0]?.account_id ?? null;
   const tm = useQuery({ queryKey: ["tm", accountId], queryFn: () => api.timeMachine(accountId!), enabled: accountId != null, staleTime: Infinity });
   const [upto, setUpto] = useState<number | null>(null);

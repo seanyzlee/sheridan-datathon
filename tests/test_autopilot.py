@@ -65,3 +65,16 @@ def test_endpoint(client, monkeypatch):
     assert r["ladder"] and r["result"]["chosen"] == ["trim_cash"] and "detected" in r["detection"]
     assert client.post("/api/customer/1/autopilot", json={}).status_code == 404
     assert client.post("/api/customer/20396/autopilot", json={"steps": ["x"] * 11}).status_code == 422
+
+
+def test_ladder_runway_steps_match_the_engine():
+    """The staircase's numbers: each step's runway after is engine.runway with the cuts so far, and the steps chain."""
+    import api
+    p, monthly, _ = api.get_profile(20396, False)
+    s = engine.Shock(income_factor=0.55, income_months=6)
+    rows = autopilot.ladder(p, s, monthly)
+    assert rows and rows[0]["runway_before"] == pytest.approx(min(engine.runway(p, s).months, engine.RUNWAY_CAP))
+    for a, b in zip(rows, rows[1:]):
+        assert b["runway_before"] == a["runway_after"]
+    for r in rows:
+        assert r["adds"] == pytest.approx(r["runway_after"] - r["runway_before"], abs=0.051)

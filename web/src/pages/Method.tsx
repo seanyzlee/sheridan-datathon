@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Bar, BarChart, Cell, LabelList, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../api";
-import { axisProps, cursorBand } from "../charts/common";
+import { anim, axisProps, cursorBand } from "../charts/common";
 import { ChartFrame, DataTable, ErrorNote, Loading, SectionHead, TipBox } from "../components/ui";
 import { pct } from "../format";
 import { usePalette } from "../theme";
@@ -73,7 +73,7 @@ export default function Method() {
                       { label: "Seconds", value: payload[0].payload.seconds.toFixed(2) },
                       { label: "Faster than Python", value: `${Math.round(payload[0].payload.speedup_vs_python)}×` },
                     ]} />) : null} />
-                  <Bar dataKey="seconds" radius={[0, 4, 4, 0]} maxBarSize={20} isAnimationActive={false}>
+                  <Bar dataKey="seconds" radius={[0, 4, 4, 0]} maxBarSize={20} {...anim()}>
                     {bench.map((b) => <Cell key={b.label} fill={b.fast ? pal.shock : pal.neutral} />)}
                     <LabelList dataKey="seconds" position="right"
                                formatter={(v: number) => `${v.toFixed(2)} s`}

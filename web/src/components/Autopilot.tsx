@@ -6,6 +6,7 @@ import { gsap, reducedMotion, useGSAP } from "../motion";
 import { useAdvanced, useAppState, useDebounced } from "../state";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { ErrorNote } from "./ui";
+import { Staircase } from "../charts/Staircase";
 
 // Shock Autopilot: notices an income drop in the customer's own months, then turns a shock into a ranked
 // recovery plan. Each step is a real spending category, priced from their last 12 months; switching steps
@@ -169,6 +170,7 @@ export function Autopilot() {
                 })}
               </ol>
             )}
+            {d.ladder.length > 0 && <Staircase steps={d.ladder} chosen={chosen} target={res.target} />}
             {advanced && <p className="console-hint ap-foot">Months added assume the steps are taken in this order; each step's saving is the median of that spending over their last 12 months.</p>}
             <div className="ap-mini" aria-hidden>
               <span>Savings last</span>

@@ -123,6 +123,22 @@ python discovery.py                              # recompute every finding
 python bench.py                                  # Python vs NumPy vs C++ benchmark
 ```
 
+### Public demo on Hugging Face Spaces
+
+The public demo is at [huggingface.co/spaces/Re0821/toonie](https://huggingface.co/spaces/Re0821/toonie) (direct link: re0821-toonie.hf.space). It runs from the Parquet cache, without `data/` or Tiger Data, and uses the NumPy simulation.
+
+Free Hugging Face accounts can only host Gradio Spaces on ZeroGPU, so [deploy/zerogpu/app.py](deploy/zerogpu/app.py) serves the unchanged FastAPI app through Gradio's server, with a no-op `@spaces.GPU` function that ZeroGPU requires and nothing calls. A PRO account can use the Docker Space in [deploy/space/](deploy/space/) instead (`--target docker`), which also builds the C++ core. [tools/make_space.py](tools/make_space.py) assembles the upload folder in `build/hf-space` from the tracked app files, `cache/`, the prebuilt front end and the target's own files.
+
+To publish changes:
+
+```bash
+.venv/Scripts/python.exe tools/make_space.py
+.venv/Scripts/hf.exe auth login
+.venv/Scripts/hf.exe upload Re0821/toonie build/hf-space . --repo-type space --exclude "**/__pycache__/**"
+```
+
+To create the Space from scratch on another account: `hf repos create <user>/toonie --type space --space-sdk gradio --flavor zero-a10g --env GRADIO_SSR_MODE=false --public` (the environment variable lets the app's own home page win over Gradio's). Optional: in the Space's **Settings, Variables and secrets**, add `GEMINI_API_KEY` as a secret; every visitor then uses that key's quota.
+
 ## Checks
 
 ```bash

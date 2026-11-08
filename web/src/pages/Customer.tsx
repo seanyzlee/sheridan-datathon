@@ -7,6 +7,9 @@ import { RunwayRuler } from "../components/RunwayRuler";
 import { lazy, Suspense } from "react";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { Autopilot } from "../components/Autopilot";
+import { FuturesDots } from "../charts/FuturesDots";
+import { CliffMeter } from "../charts/CliffMeter";
+import { MoneyFlow } from "../charts/MoneyFlow";
 import { useReveal } from "../motion";
 import { ChartFrame, DataTable, ErrorNote, Loading, SectionHead, Stat, Switch } from "../components/ui";
 import { describeShock, isNoShock, monthLabel, money, pct, runwayFigure, signedPct } from "../format";
@@ -183,32 +186,6 @@ function AdvisorSummary({ summary, accountId, shock, live }: { summary: string; 
       <summary>Read the advisor's summary</summary>
       <div className="advisor">{body}</div>
     </details>
-  );
-}
-
-function BreakingPoint({ r }: { r: ShockResult }) {
-  const bp = r.breaking_point;
-  const T = r.target;
-  if (bp.already_broken) {
-    return (
-      <div className="panel">
-        <h3>Breaking point</h3>
-        <p>This shock already takes them under {T} months. The backup plan below shows what closes the gap.</p>
-      </div>
-    );
-  }
-  const items: { value: string; label: string }[] = [];
-  if (bp.income_factor != null && bp.income_factor > 0) items.push({ value: pct(bp.income_factor), label: "the lowest income they can take, as a share of normal" });
-  if (bp.one_off > 0) items.push({ value: money(bp.one_off), label: "the largest one-off cost on top of this shock" });
-  if (bp.bills_pct != null && bp.bills_pct > 0) items.push({ value: `+${pct(bp.bills_pct)}`, label: "the largest bills increase" });
-  return (
-    <div className="panel">
-      <h3>Breaking point</h3>
-      <p>What keeps them at {T} months or more. Each limit moves one lever and holds the rest of the shock.</p>
-      {items.length ? (
-        <ul className="limits">{items.map((it) => <li key={it.label}><span className="limit-value">{it.value}</span><span className="limit-label">{it.label}</span></li>)}</ul>
-      ) : <p>No single lever breaks them.</p>}
-    </div>
   );
 }
 
@@ -392,11 +369,20 @@ export default function Customer() {
                       <BurnDownChart r={r} stale={staleShock} />
                       <WaterfallChart r={r} stale={staleShock} />
                     </div>
-                    <BreakingPoint r={r} />
+                    <div className="grid-2">
+                      <FuturesDots r={r} stale={staleShock} />
+                      <MoneyFlow r={r} stale={staleShock} />
+                    </div>
+                    <CliffMeter r={r} stale={staleShock} />
                   </>
                 ) : (
                   <>
                     <FuturesFrame r={r} stale={staleShock} simple />
+                    <div className="grid-2">
+                      <FuturesDots r={r} stale={staleShock} simple />
+                      <MoneyFlow r={r} stale={staleShock} simple />
+                    </div>
+                    <CliffMeter r={r} stale={staleShock} simple />
                     <AdvisorSummary summary={r.summary} accountId={accountId} shock={s} live={useLive} />
                   </>
                 )}

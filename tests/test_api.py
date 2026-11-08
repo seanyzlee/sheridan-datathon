@@ -100,3 +100,51 @@ def test_stress_surface_is_the_judges_formula(client):
     assert s["marker"]["under3"] == pytest.approx(b["kpis"]["under3"])
     held = client.post("/api/bank/surface", json={"one_off": 2500, "ei_cap_on": True}).json()["held"]
     assert held == ["the one-off cost", "the EI weekly maximum"]
+
+
+@pytest.mark.parametrize("shock", [{}, EI_6M, {"income_factor": 0.55, "bills_pct": 0.15, "spend_delta": 300},
+                                   {"one_off": 2500}])
+def test_money_flow_balances_and_matches_the_gap(client, offline, shock):
+    r = client.post("/api/customer/20111/shock?live=false", json=shock).json()
+    f = r["flow"]
+    ins, outs = sum(i["amount"] for i in f["in"]), sum(o["amount"] for o in f["out"])
+    assert ins == pytest.approx(outs) == pytest.approx(f["total"])
+    from_savings = sum(i["amount"] for i in f["in"] if i["key"] == "savings")
+    assert from_savings == pytest.approx(max(r["runway"]["gap"], 0.0), abs=0.01)
+
+
+def test_people_rows_and_regions(client):
+    for d in client.get("/api/finding").json()["default_by_band"]:
+        assert 0 <= d["filled"] <= d["people"]
+        assert d["filled"] / d["people"] == pytest.approx(d["default_rate"], abs=0.1)
+    b = client.post("/api/bank", json=EI_6M).json()
+    regions = {x["region"]: x for x in b["regions_under3"]}
+    assert set(regions) == set(b["regions"]) and sum(x["n"] for x in regions.values()) == b["customers"]
+    for reg, x in regions.items():   # the heatmap cells, weighted by size, give the same share
+        cells = [h for h in b["heatmap"] if h["region"] == reg and h["n"]]
+        assert x["share"] == pytest.approx(sum(h["share"] * h["n"] for h in cells) / sum(h["n"] for h in cells))
+
+
+def test_swimlane_fields(client):
+    import pandas as pd
+    for c in client.get("/api/time-machine").json()["customers"]:
+        if c["lead_months"] is None:
+            assert c["first_flag"] is None
+        else:
+            lead = (pd.Period(c["known"], "M") - pd.Period(c["first_flag"], "M")).n
+            assert lead == c["lead_months"]
+
+
+def test_money_flow_cuts_and_surplus():
+    """Autopilot cuts (a negative other increase) and a surplus month both stay balanced."""
+    import plan
+    from engine import Shock
+    prof = engine.profiles_all()
+    surplus_id = int(prof.loc[prof["I"] > prof["S"] * 1.2, "account_id"].iloc[0])
+    for acct, s in [(20111, Shock(spend_delta=-2000)), (20111, Shock(income_factor=0.55, spend_delta=-500)), (surplus_id, Shock())]:
+        p = engine.profile(acct)
+        f, r = plan.money_flow(p, s), engine.runway(p, s)
+        assert sum(i["amount"] for i in f["in"]) == pytest.approx(sum(o["amount"] for o in f["out"]))
+        left = sum(o["amount"] for o in f["out"] if o["key"] == "left")
+        from_savings = sum(i["amount"] for i in f["in"] if i["key"] == "savings")
+        assert from_savings - left == pytest.approx(r.gap, abs=0.01)
