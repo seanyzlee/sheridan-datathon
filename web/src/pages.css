@@ -1,0 +1,139 @@
+/* Styles for the analysis pages (Whole bank, Main finding, Time machine, How it works). Owned by the analysis-pages workstream.
+   Matches the card language of redesign.css (.glance-tile, .ap-plan): 14-16px radius, hairline border, one soft shadow. */
+
+.pg { container-type: inline-size; --pg-shadow: 0 1px 2px rgba(20, 32, 46, 0.04), 0 10px 30px -22px rgba(20, 32, 46, 0.4); }
+
+/* ------------------------------------------------------------------ cards */
+.pg-card {
+  min-width: 0; padding: 20px 22px; border-radius: 16px; background: var(--surface);
+  border: 1px solid var(--rule); box-shadow: var(--pg-shadow);
+}
+.pg-card > .chart { gap: 12px; }
+.pg-card .chart-sub, .pg-card .heat-scale, .pg-hint { color: var(--ink-2); }
+.pg-card .chart-title { font-size: var(--t-md); font-weight: 680; letter-spacing: -0.01em; }
+.pg-card .table-wrap { border-radius: 12px; }
+.pg-card > .table-wrap:only-child, .pg-card.flush > .table-wrap { border: 0; border-radius: 0; }
+.pg-card.flush { padding: 0; overflow: hidden; }
+.pg-card .fine { color: var(--ink-2); margin-top: 14px; line-height: 1.5; }
+.pg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
+.pg-grid.wide-left { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+@container (max-width: 880px) { .pg-grid, .pg-grid.wide-left { grid-template-columns: minmax(0, 1fr); } }
+.pg .section { margin-top: 36px; }
+.pg .section-head { margin-bottom: 14px; }
+
+/* ------------------------------------------------------------------ KPI tiles (the Stat component restyled as tiles) */
+.pg-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; transition: opacity 160ms; }
+.pg-stats.stale { opacity: 0.6; }
+.pg-stats .stat, .pg-stats .stat + .stat {
+  padding: 16px 18px 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface);
+  box-shadow: var(--pg-shadow); gap: 4px;
+}
+.pg-stats .stat-label { font-size: var(--t-sm); font-weight: 600; }
+.pg-stats .stat-value { font-size: clamp(1.45rem, 2.2vw, 1.9rem); font-weight: 720; letter-spacing: -0.03em; line-height: 1.1; }
+.pg-stats .stat-sub { color: var(--ink-2); }
+.pg-stats .stat-sub.bad { color: var(--critical); font-weight: 600; }
+.pg-stats.lead-first .stat:first-child { background: linear-gradient(160deg, var(--shock-wash), var(--surface) 70%); border-color: color-mix(in srgb, var(--shock) 35%, var(--rule)); }
+.pg-stats.lead-first .stat:first-child .stat-value { color: var(--shock-ink); }
+@media (max-width: 640px) {
+  .pg-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .pg-stats .stat, .pg-stats .stat + .stat { padding: 12px 14px; }
+}
+
+/* ------------------------------------------------------------------ Whole bank: plain-words headline (simple view) */
+.pg-headline {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 22px; align-items: center;
+  padding: 22px 24px; border-radius: 16px; margin-bottom: 14px;
+  background: linear-gradient(160deg, var(--shock-wash), var(--surface) 75%);
+  border: 1px solid color-mix(in srgb, var(--shock) 30%, var(--rule)); box-shadow: var(--pg-shadow);
+}
+.pg-headline-big { font-size: clamp(2.6rem, 6vw, 3.6rem); font-weight: 760; letter-spacing: -0.04em; line-height: 1; color: var(--shock-ink); font-variant-numeric: tabular-nums; }
+.pg-headline p { font-size: var(--t-lg); line-height: 1.4; font-weight: 520; max-width: 46ch; }
+.pg-headline p span { display: block; font-size: var(--t-sm); color: var(--ink-2); font-weight: 450; margin-top: 4px; }
+@media (max-width: 640px) { .pg-headline { grid-template-columns: minmax(0, 1fr); padding: 18px; } .pg-headline p { font-size: var(--t-md); } }
+
+.pg-guide { display: flex; flex-direction: column; gap: 14px; }
+.pg-guide h2 { font-size: var(--t-md); font-weight: 680; }
+.pg-guide ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.pg-guide li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; font-size: var(--t-sm); color: var(--ink-2); line-height: 1.45; }
+.pg-guide li strong { color: var(--ink); font-weight: 650; }
+.pg-swatch { width: 14px; height: 14px; border-radius: 4px; margin-top: 3px; }
+
+/* ------------------------------------------------------------------ heatmap */
+.pg .heat { gap: 3px; }
+.pg .heat-cell { border-radius: 6px; height: 36px; }
+.pg .heat-row-label, .pg .heat-col-label { color: var(--ink-2); }
+.pg .heat-scale { flex-wrap: wrap; row-gap: 4px; }
+.pg-heat-scroll { overflow-x: auto; }
+.pg-heat-scroll > .heat { min-width: 300px; }
+
+/* ------------------------------------------------------------------ stress surface */
+.pg .surface-wrap { height: clamp(380px, 46vw, 560px); border-radius: 14px; background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--shock) 7%, var(--surface)), var(--surface) 72%); }
+.surface-wrap .surface-label { color: var(--ink-2); text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface), 0 0 6px var(--surface); }
+.surface-wrap .surface-label.strong { color: var(--ink); font-size: 12px; }
+.surface-readout {
+  position: absolute; top: 12px; left: 12px; z-index: 40; pointer-events: none; max-width: calc(100% - 24px);
+  display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--rule); box-shadow: var(--pg-shadow, 0 8px 24px -16px rgba(0, 0, 0, 0.4));
+  font-size: var(--t-xs); color: var(--ink-2); font-variant-numeric: tabular-nums;
+}
+.surface-readout strong { font-size: var(--t-lg); color: var(--ink); font-weight: 720; letter-spacing: -0.02em; line-height: 1.1; }
+.surface-readout .lbl { font-weight: 600; color: var(--ink-2); }
+.surface-hint {
+  position: absolute; right: 12px; bottom: 12px; z-index: 40; pointer-events: none; font-size: 11px; color: var(--ink-2);
+  padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 90%, transparent); border: 1px solid var(--rule);
+}
+@media (max-width: 640px) { .surface-hint { display: none; } .surface-readout strong { font-size: var(--t-md); } }
+
+/* ------------------------------------------------------------------ fragile-customers table */
+.pg .meter-track { width: 72px; }
+
+/* ------------------------------------------------------------------ Main finding */
+.pg-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-sm); font-weight: 650; color: var(--shock-ink); margin-bottom: 12px; }
+.pg-eyebrow::before { content: ""; width: 18px; height: 2px; border-radius: 2px; background: var(--shock); }
+.pg-finding-head { padding: 26px 28px; border-radius: 18px; background: linear-gradient(165deg, var(--shock-wash), var(--surface) 70%); border: 1px solid color-mix(in srgb, var(--shock) 25%, var(--rule)); box-shadow: var(--pg-shadow); margin-bottom: 18px; }
+.pg-finding-head .finding-head { max-width: 36ch; }
+.pg-finding-head .fine { color: var(--ink-2); margin-top: 14px; }
+@media (max-width: 640px) { .pg-finding-head { padding: 18px; } .pg-finding-head .finding-head { font-size: 1.35rem; } }
+.pg-callout { display: flex; gap: 12px; align-items: flex-start; padding: 16px 18px; border-radius: 14px; background: var(--today-wash); font-size: var(--t-sm); line-height: 1.5; margin-top: 22px; }
+.pg-callout::before { content: "i"; flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 12px; background: var(--today); color: #fff; font-style: italic; }
+
+/* ------------------------------------------------------------------ Time machine */
+.pg-controls { display: flex; flex-wrap: wrap; gap: 16px 22px; align-items: flex-end; margin-bottom: 18px; }
+.pg-controls .account-field { color: var(--ink-2); font-size: var(--t-sm); font-weight: 600; min-width: min(300px, 100%); flex: 0 1 320px; }
+.pg-controls .select { font-size: var(--t-md); padding: 9px 12px; border-radius: 10px; width: 100%; }
+.pg-controls .replay { flex: 1 1 360px; flex-wrap: nowrap; }
+.pg-controls .replay input[type="range"] { min-width: 0; }
+.pg-month { font-weight: 720; min-width: 92px; font-variant-numeric: tabular-nums; padding: 6px 12px; border-radius: 999px; background: var(--sunk); text-align: center; }
+@media (max-width: 640px) { .pg-controls .replay { flex-wrap: wrap; } .pg-controls .replay input[type="range"] { flex-basis: 100%; order: 3; } }
+
+/* ------------------------------------------------------------------ How it works */
+.pg-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; counter-reset: step; }
+.pg-steps li { display: flex; flex-direction: column; gap: 8px; }
+.pg-steps li::before {
+  counter-increment: step; content: counter(step); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 750; font-size: var(--t-sm); background: var(--shock-wash); color: var(--shock-ink);
+}
+.pg-steps h2 { font-size: var(--t-md); font-weight: 690; letter-spacing: -0.01em; }
+.pg-steps p { color: var(--ink-2); font-size: var(--t-sm); line-height: 1.55; }
+.pg-steps code, .pg-card code { font-size: 0.9em; background: var(--sunk); padding: 1px 5px; border-radius: 4px; }
+@container (max-width: 820px) { .pg-steps { grid-template-columns: minmax(0, 1fr); } }
+.pg .defs { gap: 10px 22px; }
+.pg .defs dt { color: var(--shock-ink); font-variant-numeric: tabular-nums; }
+.pg-sources { margin: 0; padding-left: 18px; color: var(--ink-2); display: flex; flex-direction: column; gap: 8px; font-size: var(--t-sm); }
+.pg-prose { color: var(--ink-2); line-height: 1.55; max-width: 72ch; margin-bottom: 16px; }
+.pg-prose strong { color: var(--ink); }
+/* Phones: let the wide text tables wrap instead of scrolling sideways. */
+@media (max-width: 640px) {
+  .pg .wrap-sm table.data th, .pg .wrap-sm table.data td { white-space: normal; }
+  .pg .wrap-sm table.data th, .pg .wrap-sm table.data td { padding: 8px 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .pg-stats { transition: none; } }
+@media (max-width: 640px) {
+  .pg-card { padding: 16px 14px; border-radius: 14px; }
+  .pg .surface-wrap { height: 340px; margin-inline: -6px; }
+}
+@media (max-width: 640px) {
+  .surface-readout { top: auto; bottom: 10px; left: 10px; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 6px 10px; }
+}
+.pg-card .section-head h2 { font-size: var(--t-lg); }

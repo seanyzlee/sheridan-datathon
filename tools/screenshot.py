@@ -1,6 +1,8 @@
-"""Screenshot a running Streamlit page with the installed Edge/Chrome over the DevTools protocol.
+"""Screenshot a running page (the web app or Streamlit) with the installed Edge/Chrome over DevTools.
 
+    python tools/screenshot.py "http://127.0.0.1:8000/?account=20396&inc=55&eim=6" docs/img/web-customer.png
     python tools/screenshot.py "http://127.0.0.1:8501/?account=20396&twist=EI 55% for 6 months" docs/img/customer.png
+    add --dark or --light to pick the theme, --width 390 for a phone
 
 Streamlit renders over a websocket after the page loads, so a plain `--headless --screenshot` captures
 a blank page. This waits until the app has stopped running, then captures the full page.
@@ -32,7 +34,7 @@ def _browser() -> str:
     raise SystemExit("No Edge or Chrome found")
 
 
-async def _capture(ws_url: str, url: str, width: int, wait: float, out: str) -> None:
+async def _capture(ws_url: str, url: str, width: int, wait: float, out: str, dark: bool | None = None) -> None:
     ws = await websocket_connect(ws_url, max_message_size=200 * 1024 * 1024)
     n = 0
 
@@ -47,13 +49,18 @@ async def _capture(ws_url: str, url: str, width: int, wait: float, out: str) -> 
 
     await cmd("Emulation.setDeviceMetricsOverride", width=width, height=1000, deviceScaleFactor=1, mobile=False)
     await cmd("Page.enable")
+    if dark is not None:
+        await cmd("Emulation.setEmulatedMedia",
+                  features=[{"name": "prefers-color-scheme", "value": "dark" if dark else "light"}])
     await cmd("Page.navigate", url=url)
     # Wait until Streamlit has finished running (no "running" status widget) and the page settles.
     deadline = time.time() + wait
+    # Streamlit: wait for the status widget to stop running. The web app: wait for no loading notes.
     js = ("(() => { const s = document.querySelector('[data-testid=\"stStatusWidget\"]');"
-          " const m = document.querySelector('[data-testid=\"stMain\"]');"
-          " return JSON.stringify({running: !!(s && s.innerText.includes('Running')),"
-          " h: m ? m.scrollHeight : 0, n: document.querySelectorAll('[data-testid=\"stElementContainer\"]').length}); })()")
+          " const m = document.querySelector('[data-testid=\"stMain\"]') || document.documentElement;"
+          " const loading = document.querySelectorAll('.loading, .chart-body.stale').length;"
+          " return JSON.stringify({running: !!(s && s.innerText.includes('Running')) || loading > 0,"
+          " h: m.scrollHeight, n: document.querySelectorAll('[data-testid=\"stElementContainer\"], svg, table').length}); })()")
     stable, last = 0, None
     while time.time() < deadline:
         await IOLoop.current().run_in_executor(None, time.sleep, 1.0)
@@ -82,8 +89,11 @@ def main() -> None:
     ap.add_argument("out")
     ap.add_argument("--width", type=int, default=1500)
     ap.add_argument("--wait", type=float, default=60)
+    ap.add_argument("--dark", action="store_true", help="emulate prefers-color-scheme: dark")
+    ap.add_argument("--light", action="store_true", help="emulate prefers-color-scheme: light")
+    ap.add_argument("--port", type=int, default=9333, help="DevTools port; give parallel runs different ports")
     a = ap.parse_args()
-    port = 9333
+    port = a.port
     profile = tempfile.mkdtemp(prefix="shot-")
     proc = subprocess.Popen([_browser(), "--headless=new", "--disable-gpu", "--hide-scrollbars",
                              f"--remote-debugging-port={port}", f"--user-data-dir={profile}", "about:blank"],
@@ -98,7 +108,7 @@ def main() -> None:
                 time.sleep(0.2)
         else:
             raise SystemExit("Browser did not start")
-        IOLoop.current().run_sync(lambda: _capture(page["webSocketDebuggerUrl"], a.url, a.width, a.wait, a.out))
+        IOLoop.current().run_sync(lambda: _capture(page["webSocketDebuggerUrl"], a.url, a.width, a.wait, a.out, True if a.dark else False if a.light else None))
         print(f"wrote {a.out} ({os.path.getsize(a.out):,} bytes)")
     finally:
         proc.terminate()

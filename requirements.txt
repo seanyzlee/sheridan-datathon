@@ -7,6 +7,14 @@ numpy>=2.0
 streamlit>=1.40
 plotly>=5.24
 
+# Web app API (the front end lives in web/, built with npm)
+fastapi>=0.115
+uvicorn[standard]>=0.32
+httpx>=0.27
+
+# Gemini (optional): reads twist cards and rewords the advisor note; never computes numbers
+google-genai>=1.0
+
 # Notebooks and tests
 jupyter
 pytest>=8

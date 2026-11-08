@@ -1,0 +1,86 @@
+[
+  {
+    "url": "http://127.0.0.1:5172/?account=20396",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396&inc=55&eim=6",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396&inc=55&eim=6",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396&inc=55&eim=6",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=26773",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=26773",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=26773",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396&inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396&inc=55&eim=6&view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5172/?account=20396&inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  }
+]

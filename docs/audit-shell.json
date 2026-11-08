@@ -1,0 +1,279 @@
+[
+  {
+    "url": "http://localhost:5171/?account=20396",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396&inc=55&eim=6",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396&inc=55&eim=6",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396&inc=55&eim=6",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=26773",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=26773",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=26773",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/bank?inc=55&eim=6",
+    "width": 1440,
+    "dark": false,
+    "violations": [
+      {
+        "id": "heading-order",
+        "impact": "moderate",
+        "help": "Heading levels should only increase by one",
+        "nodes": 1,
+        "targets": [
+          "#bank-guide"
+        ]
+      },
+      {
+        "id": "landmark-complementary-is-top-level",
+        "impact": "moderate",
+        "help": "Aside should not be contained in another landmark",
+        "nodes": 1,
+        "targets": [
+          ".pg-guide"
+        ]
+      }
+    ],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/bank?inc=55&eim=6",
+    "width": 390,
+    "dark": false,
+    "violations": [
+      {
+        "id": "heading-order",
+        "impact": "moderate",
+        "help": "Heading levels should only increase by one",
+        "nodes": 1,
+        "targets": [
+          "#bank-guide"
+        ]
+      },
+      {
+        "id": "landmark-complementary-is-top-level",
+        "impact": "moderate",
+        "help": "Aside should not be contained in another landmark",
+        "nodes": 1,
+        "targets": [
+          ".pg-guide"
+        ]
+      }
+    ],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/bank?inc=55&eim=6",
+    "width": 1440,
+    "dark": true,
+    "violations": [
+      {
+        "id": "heading-order",
+        "impact": "moderate",
+        "help": "Heading levels should only increase by one",
+        "nodes": 1,
+        "targets": [
+          "#bank-guide"
+        ]
+      },
+      {
+        "id": "landmark-complementary-is-top-level",
+        "impact": "moderate",
+        "help": "Aside should not be contained in another landmark",
+        "nodes": 1,
+        "targets": [
+          ".pg-guide"
+        ]
+      }
+    ],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/finding",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/finding",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/finding",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396&inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396&inc=55&eim=6&view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [
+      {
+        "id": "landmark-one-main",
+        "impact": "moderate",
+        "help": "Document should have one main landmark",
+        "nodes": 1,
+        "targets": [
+          "html"
+        ]
+      },
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "help": "Page should contain a level-one heading",
+        "nodes": 1,
+        "targets": [
+          "html"
+        ]
+      }
+    ],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/?account=20396&inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/bank?inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/bank?inc=55&eim=6&view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/bank?inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "help": "Elements must meet minimum color contrast ratio thresholds",
+        "nodes": 6,
+        "targets": [
+          "div:nth-child(2) > .heat-cell:nth-child(5)",
+          "div:nth-child(3) > .heat-cell:nth-child(6)",
+          "div:nth-child(4) > .heat-cell:nth-child(6)"
+        ]
+      }
+    ],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/time-machine?view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/time-machine?view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/time-machine?view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/method?view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/method?view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://localhost:5171/method?view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  }
+]

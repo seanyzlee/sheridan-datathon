@@ -1,4 +1,4 @@
-"""Resilience Rewired: how long can a customer last, and how likely are they to make it?
+"""Toonie (Streamlit rehearsal fallback): how long can a customer last, and how likely are they to make it?
 
     streamlit run app.py
 """
@@ -7,7 +7,7 @@ import streamlit as st
 
 import ui
 
-st.set_page_config(page_title="Resilience Rewired", page_icon=":material/savings:", layout="wide")
+st.set_page_config(page_title="Toonie", page_icon=":material/savings:", layout="wide")
 ui.init_state()
 ui.warm_up()
 

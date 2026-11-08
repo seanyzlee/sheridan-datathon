@@ -1,0 +1,107 @@
+[
+  {
+    "url": "http://127.0.0.1:5173/bank?inc=55&eim=6",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/bank?inc=55&eim=6",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/bank?inc=55&eim=6",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/finding",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/finding",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/finding",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/bank?inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/bank?inc=55&eim=6&view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/bank?inc=55&eim=6&view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/time-machine?view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/time-machine?view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/time-machine?view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/method?view=advanced",
+    "width": 1440,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/method?view=advanced",
+    "width": 390,
+    "dark": false,
+    "violations": [],
+    "console_errors": []
+  },
+  {
+    "url": "http://127.0.0.1:5173/method?view=advanced",
+    "width": 1440,
+    "dark": true,
+    "violations": [],
+    "console_errors": []
+  }
+]

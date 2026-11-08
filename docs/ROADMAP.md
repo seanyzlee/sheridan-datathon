@@ -56,7 +56,7 @@ app.py (Streamlit)
 | **HPC core** | **C++17 + OpenMP, exposed to Python with pybind11** (`hpc/`) | Monte Carlo across accounts × paths × months in parallel on every CPU core |
 | HPC build | CMake + scikit-build-core, or `pip install -e hpc/` | One command to build. Test the build on every laptop at H+0 |
 | HPC fallback | NumPy version `sim_numpy.py` with the same function signature | The demo never depends on the compiler working |
-| App | Streamlit | Sliders and an account box in minutes. Works well for a live demo |
+| App | Streamlit, then FastAPI + React (`api.py`, `web/`) | Streamlit got the demo running in hours; the web app is the production front end |
 | Charts | Plotly | Fan charts and heatmaps that look good in the video |
 | Discovery | Jupyter notebook `discovery.ipynb` | Runs the engine across all accounts |
 | Tests | pytest (Python) and a C++ check run from pytest | C++ results must match Python on the same inputs |
@@ -279,6 +279,31 @@ Roles: **A** = engine, **B** = app, **C** = discovery and story, **D** = C++ HPC
 ### Rest · H+15 → H+18
 Take turns: at least two people sleep in shifts while one keeps working. Don't skip this, because the live twist needs a clear head.
 
+### Phase 4b — Production web app (added 2026-11-07)
+*Goal: The whole app as a clean web app, designed with the `frontend-design` and `dataviz` skills, without changing a single number.*
+
+- [x] `api.py`: FastAPI endpoints for status, accounts, the twist reader, the customer, the shock, the whole bank, the finding, the time machine and the method page; serves `web/dist` *(lru caches for the simulation runs; startup warm-up in the background)*
+- [x] `web/`: React + TypeScript + Vite + Recharts. Customer, Whole bank, Main finding, Time machine and How it works, with the shock console on the two pages it drives
+- [x] Runway ruler hero; blue = today, tangerine = after the shock; palette checked with the dataviz validator in light and dark; every chart has a table view; no dual axes
+- [x] Shareable links (`?account=…&inc=55&eim=6`, plus `?twist=`), live-feed polling, Tiger Data / offline switch, light and dark themes, phone layout
+- [x] `tests/test_api.py`: every endpoint, exact engine numbers, offline fallback, error paths
+- [x] Simple and advanced views *(simple: plain labels, income / EI length / one-off levers, one balance chart, plans, spending; advanced adds the other levers, waterfall, breaking point, history, bank drill-downs, time machine, method, data-source switches. Remembered per browser, `?view=advanced` for demo links)*
+- [x] No visible scroll bars (scrolling still works by wheel, touch and keyboard)
+- [x] 3D stress surface (three.js via React Three Fiber 8 + drei 9, built with the cloudai-x `threejs-*` skills): `/api/bank/surface` sweeps income kept 100→0% × bills 0→50% (546 scenarios, `engine.runway_vec`, ~0.2-0.7 s, cached) holding the shock's other levers; the marker is the current shock's exact value. Hover reads a point, click applies it, table view, dark mode, lazy-loaded chunk, WebGL fallback *(test in tests/test_api.py)*
+- [x] Decorative 3D scene (`web/src/components/Decor3D.tsx`): tangerine, piggy bank and coins from three.js geometry (no downloads or licences; the free CC0 options found were a 20 MB coin zip and manual itch.io packs). Tilts toward the cursor, click animations, only in empty states, lazy-loaded, paused off screen, reduced-motion aware, aria-hidden
+- [x] Assistant (`assistant.py`, `/api/chat`, the Ask panel): Gemini tool calling. Read tools run the engine (customer, what-if, whole bank, main finding) and return pre-formatted figures; action tools change only on-screen state (account, shock, view, theme, page, data source) and the browser applies them with Undo. Every figure in a reply is checked against tool results; one rewrite, then unchecked figures are flagged. Falls back across models on rate limits *(tests in tests/test_assistant.py)*
+- [x] Gemini for language only (`gemini_client.py`): reads twist cards alongside the rule-based reader (structured output, clamped to slider ranges, compared with the rules, still shown before applying) and rewords the advisor summary on request with a guard that rejects any figure the engine didn't produce. Optional: no key or no network means the rule-based behaviour *(default model gemini-3.5-flash-lite, ~1 s; tests in tests/test_gemini.py)*
+
+### Phase 4d — Shock Autopilot and the front-end redesign (2026-11-08)
+*Goal: The feature no Canadian bank offers, and a front end good enough to ship.*
+
+- [x] Market research with the `customer-research` and `competitive-analysis` skills: Canadian bank tools look backward (RBC NOMI Insights, Tangerine Overview) or 7 days ahead on scheduled payments (NOMI Forecast); none detects an income shock and hands over a tailored, priced plan
+- [x] `autopilot.py` + `/api/customer/{id}/autopilot`: detection (latest month under 60% of usual income), the recovery ladder (real spending categories, priced from the last 12 months, months added by engine.runway), and any chosen combination with the simulated chance *(tests/test_autopilot.py)*
+- [x] Front end: at-a-glance tiles, the Autopilot panel with an animated runway meter, a three.js futures view (10th-90th percentile slab, median tube, judges' line, $0 plane), GSAP motion via `web/src/motion.ts` (reduced-motion aware)
+- [x] Quality loop with the `iterate-until-verified` skill: gates in `docs/QUALITY_GATES.md`, `tools/audit.py` (axe-core + console errors), parallel implementers and an independent verifier
+
+*(Phase 4c, a gamified Homestead view, was built and then removed on 2026-11-08 in favour of investing in data visualization and front-end design.)*
+
 ### Phase 5 — Rehearse the live twist · H+18 → H+21 (everyone)
 *Goal: The 5-minute judging slot is practised at least 5 times.*
 
@@ -347,7 +372,7 @@ Installed globally with `npx skills add <skill> -g -y`. Each one was checked on 
 - Deploying the app to the cloud. The app runs locally and talks to Tiger Data; deploy it only if there's time after H+21
 - Making the live twist depend on the network. Every panel the twist needs must also work from the Parquet cache
 - GPU / CUDA. Multi-core C++ is fast enough for this data size and far less risky to build in 24 hours
-- An LLM chat agent as the main interface. It's slower and can make up numbers during a live twist. The twist reader is rule-based, always shows what it parsed, and never calculates
+- An LLM chat agent as the main interface. It's slower and can make up numbers during a live twist. The twist reader is rule-based, always shows what it parsed, and never calculates. *(Later, at the team's request, Gemini was added: a second twist-card reader, a reworded advisor note, and an assistant panel beside the main screens, not instead of them. It never produces a number itself: figures come from engine tools and are checked, settings changes have Undo, and the app runs the same without it. Free-tier rate limits are the live-demo risk; enable billing before judging.)*
 - ML default prediction as the product. Use default data only to check the engine
 - Replacing the judges' formula with the simulation. The simulation adds to the headline number and never replaces it
 
